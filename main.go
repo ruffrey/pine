@@ -4,6 +4,28 @@ import (
 	"strings"
 )
 
+// Pine - a random forest implementation.
+
+/*
+Predrag Radenkovic, University of Belgrade:
+
+Random forests is an ensemble classifier that consists of
+many decision trees and outputs the class that is the mode
+of the class's output by individual trees.
+
+Decision trees are individual learners that are combined.
+
+
+
+Why random forests? For many data sets, it produces a highly
+accurate classifier. It runs efficiently on large databases.
+It can handle thousands of input variables without variable
+deletion. It gives estimates of what variables are important
+in the classification. It generates an internal unbiased
+estimate of the generalization error as the forest building
+progresses.
+*/
+
 var trainingData = "Hey there my name is Jeff. What is up? How are you. Hi there dude."
 var trainingCases []string
 
@@ -38,7 +60,11 @@ func main() {
 
 	variables = uniqueChars
 
+	// How to select M?
+	// Try to recommend defaults, half of them and twice of them and pick the best
 	M = len(uniqueChars)
+	// How to select N?
+	// Build trees until the error no longer decreases
 	N = len(trainingCases)
 	rootTree := &Tree{
 		Nodes: make([]Tree, 0),
@@ -69,6 +95,7 @@ func (t *Tree) Run() {
 	var bestSplitValue float32
 	var bestSplitTreeIndex int
 	var stopConditionHolds bool
+	var giniIndex float32
 
 	for {
 		// For each node of the tree, randomly choose `m` variables on
@@ -76,10 +103,12 @@ func (t *Tree) Run() {
 		for n := 0; n < len(t.Nodes); n++ {
 			// Calculate the best split based on these m variables in the
 			// training set.
-			s := t.Nodes[n].CalcSplit()
-			isBetter := s > bestSplitValue
+			// Splits are chosen according to a purity measure:
+			// E.g. squared error (regression), Gini index or devinace (classification)
+			giniIndex = t.Nodes[n].CalcSplit()
+			isBetter := giniIndex > bestSplitValue
 			if isBetter {
-				bestSplitValue = s
+				bestSplitValue = giniIndex
 				bestSplitTreeIndex = n
 			}
 		}
