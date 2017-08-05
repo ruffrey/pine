@@ -106,6 +106,16 @@ func (t *Tree) Run() {
 			// Splits are chosen according to a purity measure:
 			// E.g. squared error (regression), Gini index or devinace (classification)
 			giniIndex = t.Nodes[n].CalcSplit()
+
+			// Estimating the importance of each predictor:
+			// - Denote by ê the OOB estimate of the loss when using original training
+			// set, D.
+			// - For each predictor xp where p∈{1,..,k}
+			// 		- Randomly permute pth predictor to generate a new set of
+			// 		samples D' ={(y1,x'1),...,(yN,x'N)}
+			// 		- Compute OOB estimate êk of prediction error with the new samples
+			// - A measure of importance of predictor xp is êk – ê, the increase in
+			// error due to random perturbation of pth predictor
 			isBetter := giniIndex > bestSplitValue
 			if isBetter {
 				bestSplitValue = giniIndex
@@ -124,5 +134,21 @@ func (t *Tree) CalcSplit() (v float32) {
 }
 
 func (t *Tree) Split() {
+
+}
+
+/*
+Grow is probably only done on the root tree (?)
+
+
+- While growing forest, estimate test error from training samples.
+- For each tree grown, 33-36% of samples are not selected in bootstrap,
+called out of bootstrap (OOB) samples.
+- Using OOB samples as input to the corresponding tree, predictions are
+made as if they were novel test samples
+- Through book-keeping, majority vote (classification), average
+(regression) is computed for all OOB samples from all trees.
+*/
+func (t *Tree) Grow() {
 
 }
