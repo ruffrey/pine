@@ -76,12 +76,30 @@ func evaluate_algorithm(dataset []DataRow, n_folds int, args ...interface{}) {
 			row_copy := row
 			test_set = append(test_set, row_copy)
 		}
-		predicted = random_forest(train_set, test_set, *args)
-		actual = [row[-1] for row in fold]
+		predicted := random_forest(train_set, test_set)
+		actual := [row[-1] for row in fold] // last value of last rows in fold
+		lastFoldCols := make([]string)
+		for _, row := range fold.Coords {
+			lastFoldCols = append(row.)
+		}
+		actual := lastFoldRow[len(lastFoldRow)-1]
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
 	}
 }
+
+func random_forest(dataset []DataRow, test_set []DataRow) (prediction []string) {
+
+	return prediction
+}
+
+// metaparams
+n_folds = 5
+max_depth = 10
+min_size = 1
+sample_size = 1.0
+n_features = int(sqrt(len(dataset[0])-1))
+n_trees = 10
 
 func main() {
 	data := load_csv("sonar.all-data.csv")

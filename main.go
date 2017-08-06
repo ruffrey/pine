@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"math"
+	"math/rand"
 	"strings"
 )
 
-// Pine - a random forest implementation.
+// Pine - a random forest implementation that takes characters and predicts characters.
 
 /*
 Predrag Radenkovic, University of Belgrade:
@@ -26,6 +29,12 @@ estimate of the generalization error as the forest building
 progresses.
 */
 
+/*
+Notes:
+- this will implement a classifier, not regression.
+- from a string we will predict the next string.
+*/
+
 var trainingData = "Hey there my name is Jeff. What is up? How are you. Hi there dude."
 var trainingCases []string
 
@@ -38,36 +47,44 @@ var n int
 // M is the total number of variables in the classifier
 var M int
 
-// m is the number  of input variables to be used to determine
-// the decision at a node of the tree; m should be much less than M
+// m is the number of input variables (i.e. features, i.e. predictors)
+// to be used to determine the decision at a node of the tree; m should
+// be much less than M
 var m int
 
 var variables map[string]bool
 
 var totalTrees int = 1000
 
+var nodeSize = 5
+
+//var maxDepth = 10
+
 func main() {
-	uniqueChars := make(map[string]bool)
+	variables = make(map[string]bool)
 	allChars := strings.Split(trainingData, "")
 	var c string
 	for i := 0; i < len(allChars); i++ {
 		c = allChars[i]
-		if !uniqueChars[c] {
-			uniqueChars[c] = true
+		if _, existsYet := variables[c]; !existsYet {
+			variables[c] = true
 		}
 	}
 	trainingCases = strings.Split(trainingData, ". ")
 
-	variables = uniqueChars
-
 	// How to select M?
 	// Try to recommend defaults, half of them and twice of them and pick the best
-	M = len(uniqueChars)
+	M = len(variables)
+	m = int(math.Sqrt(float64(M)))
 	// How to select N?
 	// Build trees until the error no longer decreases
 	N = len(trainingCases)
+	n = 2 * (N / 3) // .66 n
+
+	fmt.Println("M=", M, ", m=", m, "N=", N, ", n=", n)
+
 	rootTree := &Tree{
-		Nodes: make([]Tree, 0),
+		Nodes: make([]*Tree, 0),
 	}
 
 	// Training
@@ -80,61 +97,135 @@ func main() {
 	}
 }
 
+/*
+Tree either has child nodes with list of child Nodes, or is a terminal with
+a Value that is an index into the indexedVariables.
+*/
 type Tree struct {
-	Nodes []Tree
+	// Index is the index of this tree on the parent's Nodes
+	Index int
+	// Value is the feature; this Node will predict this Value.
+	Value string
+	// Nodes are child trees for this tree
+	Nodes []*Tree
+	// Variables are all the features (predictors) this tree tries to predict.
+	// Each tree will be responsible for a random subset of it's parent's
+	// Variables. The string is the category (letter) and the float value
+	// is the cutoff point.
+	Variables map[string]float32
 }
 
-func (t *Tree) Run() {
+func NewTree(childIndex int, parentVariables map[string]float32) (t *Tree) {
+	t = &Tree{
+		Index:     childIndex,
+		Variables: make(map[string]float32),
+	}
+	// choose subset of random variables
+
+	// then choose which variable this node will be its value (?)
+
+	return t
+}
+
+func (t *Tree) Run(allCases []string) {
 	// Choose a training set for this tree by choosing `n` times
 	// with replacement from all N available training cases (i.e.
 	// take a bootstrap sample). Use the rest of the cases to
 	// estimate the error of the tree, by predicting their classes.
-	var trainingSample string
-	var otherSamples []string
+	trainingSamples, testSamples := getRandomSubset(allCases)
 	var error float32
 	var bestSplitValue float32
 	var bestSplitTreeIndex int
 	var stopConditionHolds bool
+	var features []string
 	var giniIndex float32
 
-	for {
-		// For each node of the tree, randomly choose `m` variables on
-		// which to base the decision at that node.
-		for n := 0; n < len(t.Nodes); n++ {
-			// Calculate the best split based on these m variables in the
-			// training set.
-			// Splits are chosen according to a purity measure:
-			// E.g. squared error (regression), Gini index or devinace (classification)
-			giniIndex = t.Nodes[n].CalcSplit()
+	// For each node of the tree, randomly choose `m` variables on
+	// which to base the decision at that node.
+	for len(features) < m {
+		features = append(features, randMapKey(variables))
+	}
 
-			// Estimating the importance of each predictor:
-			// - Denote by ê the OOB estimate of the loss when using original training
-			// set, D.
-			// - For each predictor xp where p∈{1,..,k}
-			// 		- Randomly permute pth predictor to generate a new set of
-			// 		samples D' ={(y1,x'1),...,(yN,x'N)}
-			// 		- Compute OOB estimate êk of prediction error with the new samples
-			// - A measure of importance of predictor xp is êk – ê, the increase in
-			// error due to random perturbation of pth predictor
-			isBetter := giniIndex > bestSplitValue
-			if isBetter {
-				bestSplitValue = giniIndex
-				bestSplitTreeIndex = n
-			}
-		}
-		if stopConditionHolds {
-			break
+	// Calculate the best split based on these m variables in the
+	// training set.
+	// Splits are chosen according to a purity measure:
+	// E.g. squared error (regression), Gini index or deviance (classification)
+
+	for n, node := range t.Nodes {
+		giniIndex = node.CalcGini()
+
+		// Estimating the importance of each predictor:
+		// - Denote by ê the OOB estimate of the loss when using original training
+		// set, D.
+		// - For each predictor xp where p∈{1,..,k}
+		// 		- Randomly permute pth predictor to generate a new set of
+		// 		samples D' ={(y1,x'1),...,(yN,x'N)}
+		// 		- Compute OOB estimate êk of prediction error with the new samples
+		// - A measure of importance of predictor xp is êk – ê, the increase in
+		// error due to random perturbation of pth predictor
+		isBetter := giniIndex < bestSplitValue // gini is error
+		if isBetter {
+			bestSplitValue = giniIndex
+			bestSplitTreeIndex = n
 		}
 	}
 
 }
 
-func (t *Tree) CalcSplit() (v float32) {
+/*
+CalcGini calculates the Gini impurity (aka gini index). An
+alternative definition is the "expected error rate of the
+system."
+
+Wikipedia:
+
+	Gini impurity is a measure of how often a randomly chosen
+	element from the set would be incorrectly labeled if it
+	was randomly labeled according to the distribution of
+	labels in the subset. Gini impurity can be computed by
+	summing the probability p_{i} of an item with label {i}
+	being chosen times the probability 1-p_{i} of a mistake in
+	categorizing that item. It reaches its minimum (zero) when
+	all cases in the node fall into a single target category.
+*/
+func (t *Tree) CalcGini() (v float32) {
+	var probabilities []float32
+
+	var p float32
+	for _, node := range t.Nodes {
+		p = multiplyAll()
+		probabilities = append(probabilities, p)
+	}
+
+	v = sumAll(probabilities)
 	return v
 }
 
-func (t *Tree) Split() {
+func multiplyAll(vals []float32) (prod float32) {
+	for i := 1; i < len(vals); i++ {
+		prod = vals[i] * vals[i-1]
+	}
+	return prod
+}
 
+func sumAll(vals []float32) (s float32) {
+	for i := 0; i < len(vals); i++ {
+		s += vals[i]
+	}
+	return s
+}
+
+/*
+Split will take a tree and make nodes underneath it.
+*/
+func (t *Tree) Split() {
+	if len(t.Nodes) > 0 {
+		fmt.Println("tree=", *t)
+		panic("Cannot split tree that already has child nodes")
+	}
+	for i := 0; i < nodeSize; i++ {
+		t.Nodes = append(t.Nodes, NewTree(i, t.Variables))
+	}
 }
 
 /*
@@ -151,4 +242,46 @@ made as if they were novel test samples
 */
 func (t *Tree) Grow() {
 
+}
+
+func (t *Tree) Predict(parent *Tree) *Tree {
+
+}
+
+func getRandomSubset(cases []string) (trainingSamples []string, testSamples []string) {
+	C := len(cases)
+	indexesSeen := make([]int, C) // 0 means not seen, 1 means seen
+	var i int
+	var ix int
+
+	// Get random samples, with replacement, basically it is ok to have dupes.
+	// Little `n` is calculated above as a portion of big `N`
+	for i = 0; i < n; i++ {
+		ix = rand.Intn(C - 1)
+		trainingSamples = append(trainingSamples, cases[ix])
+		indexesSeen[ix] = 1
+	}
+
+	// get which samples were never put into the test
+	for i = 0; i < C; i++ {
+		if indexesSeen[i] == 0 {
+			testSamples = append(testSamples, cases[i])
+		}
+	}
+
+	return trainingSamples, testSamples
+}
+
+func randMapKey(m map[string]bool) (s string) {
+	cursor := 0
+	iterateUntil := rand.Intn(len(m) - 1)
+	for key := range m {
+		if cursor >= iterateUntil {
+			s = key
+			break
+		}
+		cursor++
+	}
+
+	return s
 }
