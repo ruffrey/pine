@@ -52,7 +52,8 @@ var M int
 // be much less than M
 var m int
 
-var variables map[string]bool
+var variables map[string]float32        // where float32 is an index
+var indexedVariables map[float32]string // where string is a variable value
 
 var totalTrees int = 1000
 
@@ -61,13 +62,15 @@ var nodeSize = 5
 //var maxDepth = 10
 
 func main() {
-	variables = make(map[string]bool)
+	variables = make(map[string]float32)
 	allChars := strings.Split(trainingData, "")
 	var c string
 	for i := 0; i < len(allChars); i++ {
 		c = allChars[i]
 		if _, existsYet := variables[c]; !existsYet {
-			variables[c] = true
+			newIndex := float32(len(indexedVariables) - 1)
+			indexedVariables[newIndex] = c
+			variables[c] = newIndex
 		}
 	}
 	trainingCases = strings.Split(trainingData, ". ")
@@ -104,10 +107,11 @@ a Value that is an index into the indexedVariables.
 type Tree struct {
 	// Index is the index of this tree on the parent's Nodes
 	Index int
-	// Value is the feature; this Node will predict this Value.
-	Value string
-	// Nodes are child trees for this tree
-	Nodes []*Tree
+	// Value is the feature; this Node will predict this Value. To look up the string
+	// value, use indexedValues[tree.Value]
+	Value float32
+	Left  *Tree
+	Right *Tree
 	// Variables are all the features (predictors) this tree tries to predict.
 	// Each tree will be responsible for a random subset of it's parent's
 	// Variables. The string is the category (letter) and the float value
@@ -118,16 +122,22 @@ type Tree struct {
 func NewTree(childIndex int, parentVariables map[string]float32) (t *Tree) {
 	t = &Tree{
 		Index:     childIndex,
-		Variables: make(map[string]float32),
+		Value:     variables[randMapKey(parentVariables)], // the float index, not the string
+		Variables: make(map[string]float32),               // all except Value
 	}
-	// choose subset of random variables
 
-	// then choose which variable this node will be its value (?)
+	for s, ix := range parentVariables {
+		if ix == t.Value {
+			continue
+		}
+		t.Variables[s] = ix
+	}
 
 	return t
 }
 
-func (t *Tree) Run(allCases []string) {
+// allCases may be every training sample, or a subset when it is further down the tree
+func Run(allCases []string) (t *Tree) {
 	// Choose a training set for this tree by choosing `n` times
 	// with replacement from all N available training cases (i.e.
 	// take a bootstrap sample). Use the rest of the cases to
@@ -137,13 +147,16 @@ func (t *Tree) Run(allCases []string) {
 	var bestSplitValue float32
 	var bestSplitTreeIndex int
 	var stopConditionHolds bool
-	var features []string
+	var features []float32 // subset of features by index
 	var giniIndex float32
 
 	// For each node of the tree, randomly choose `m` variables on
 	// which to base the decision at that node.
 	for len(features) < m {
-		features = append(features, randMapKey(variables))
+		f := variables[randMapKey(variables)]
+		if !includes(features, f) {
+			features = append(features, f)
+		}
 	}
 
 	// Calculate the best split based on these m variables in the
@@ -151,8 +164,14 @@ func (t *Tree) Run(allCases []string) {
 	// Splits are chosen according to a purity measure:
 	// E.g. squared error (regression), Gini index or deviance (classification)
 
+	for _, featureIndex := range features { // s is the feature string value
+		for _, sample := range trainingSamples {
+			left, right := testSplit(featureIndex, indexedVariables[featureIndex], trainingSamples)
+			giniIndex = CalcGini(left, right, features)
+		}
+	}
+
 	for n, node := range t.Nodes {
-		giniIndex = node.CalcGini()
 
 		// Estimating the importance of each predictor:
 		// - Denote by ê the OOB estimate of the loss when using original training
@@ -170,6 +189,29 @@ func (t *Tree) Run(allCases []string) {
 		}
 	}
 
+	return t
+}
+
+func includes(a []float32, f float32) (doesInclude bool) {
+	for _, af := range a {
+		if af == f {
+			doesInclude = true
+			break
+		}
+	}
+	return doesInclude
+}
+
+// testSplit is used to split the dataset by a candidate split point
+func testSplit(featureIndex int, value string, dataset []string) (left []string, right []string) {
+	for _, row := range dataset {
+		if string(row[index]) < value {
+			left = append(left, row)
+		} else {
+			right = append(right, row)
+		}
+	}
+	return left, right
 }
 
 /*
@@ -188,11 +230,18 @@ Wikipedia:
 	categorizing that item. It reaches its minimum (zero) when
 	all cases in the node fall into a single target category.
 */
-func (t *Tree) CalcGini() (v float32) {
+func CalcGini(left, right []float32, subsetVariables []float32) (v float32) {
 	var probabilities []float32
 
 	var p float32
-	for _, node := range t.Nodes {
+	for value, floatIndex := range variables {
+		if len(left) != 0 {
+
+		}
+		if len(right) != 0 {
+
+		}
+
 		p = multiplyAll()
 		probabilities = append(probabilities, p)
 	}
@@ -223,9 +272,7 @@ func (t *Tree) Split() {
 		fmt.Println("tree=", *t)
 		panic("Cannot split tree that already has child nodes")
 	}
-	for i := 0; i < nodeSize; i++ {
-		t.Nodes = append(t.Nodes, NewTree(i, t.Variables))
-	}
+
 }
 
 /*
@@ -272,7 +319,7 @@ func getRandomSubset(cases []string) (trainingSamples []string, testSamples []st
 	return trainingSamples, testSamples
 }
 
-func randMapKey(m map[string]bool) (s string) {
+func randMapKey(m map[string]float32) (s string) {
 	cursor := 0
 	iterateUntil := rand.Intn(len(m) - 1)
 	for key := range m {
