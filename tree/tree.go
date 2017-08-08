@@ -14,6 +14,7 @@ var indexedVariables []string // index to character
 var variables map[string]int  // character to index
 // first 4 are considered predictors, last one is the letter index to be predicted
 var trainingCases [][5]int
+var maxDepth = 5
 
 func main() {
 	variables = make(map[string]int)
@@ -41,9 +42,23 @@ func main() {
 	train()
 }
 
+/*
+Tree, aka a node, has a left and a right branch.
+
+When evaluating for an input row, take the input row and get the value
+at the VariableIndex in the input row. If it is less than the ValueIndex,
+go left (which might terminate). Otherwise, go right (which also might
+terminate).
+- if leftSamples or rightSamples, we still need to predict down the chain
+- if
+*/
 type Tree struct {
-	Left  *Tree
-	Right *Tree
+	VariableIndex int
+	ValueIndex    int // the value that this tree predicts (?)
+	Left          *Tree
+	leftSamples   [][5]int // test cases for left group
+	Right         *Tree
+	rightSamples  [][5]int // test cases for right group
 }
 
 /*
@@ -67,7 +82,7 @@ func train() {
 			dataSubsetBag := getTrainingCaseSubset(trainingCases)
 
 			variablesSubset := getVariablesSubset(indexedVariables)
-			split(tree, dataSubsetBag, variablesSubset)
+			tree.split(dataSubsetBag, variablesSubset)
 		}
 	}
 }
@@ -76,9 +91,13 @@ func train() {
 func getSplit(dataSubset [][5]int, variablesSubset []int) (t *Tree) {
 	var bestVariableIndex int
 	var bestValueIndex int
-	var bestGini float64 = 9999
 	var bestLeft [][5]int
 	var bestRight [][5]int
+	var bestGini float64 = 9999
+
+	// The goal here seems to be to split the subsets of data on random variables,
+	// and see which one best predicts the row of data. That gets turned into a
+	// new tree
 	for _, varIndex := range variablesSubset {
 		for _, row := range dataSubset {
 			// create a test split
@@ -93,7 +112,13 @@ func getSplit(dataSubset [][5]int, variablesSubset []int) (t *Tree) {
 			}
 		}
 	}
-
+	t = &Tree{
+		VariableIndex: bestVariableIndex,
+		ValueIndex:    bestValueIndex,
+		leftSamples:   bestLeft,
+		rightSamples:  bestRight,
+	}
+	return t
 }
 
 func lastColumn(dataSubset [][5]int) (lastColList []int) {
@@ -158,9 +183,77 @@ func withValue(splitGroup [][5]int, value int) (count float64) {
 }
 
 /*
-split finds a variable which optimizes the split
+split creates child splits for a node or makes terminals. This gives
+structure to the new tree created by getSplit()
 */
-func split(parent *Tree, dataSubset [][5]int, variablesSubset []string) {
+func (t *Tree) split(dataSubset [][5]int, variablesSubset []int, depth int) {
+	// check for a no-split
+	// a perfect split in one direction, so make a terminal out of it.
+	// toTerminal will pick the most frequent variable index
+	if len(t.leftSamples) == 0 || len(t.rightSamples) == 0 {
+		if len(t.leftSamples) > 0 {
+			t.Left = toTerminal(t.leftSamples)
+			t.Right = toTerminal(t.leftSamples)
+		} else {
+			t.Left = toTerminal(t.rightSamples)
+			t.Right = toTerminal(t.rightSamples)
+		}
+		return
+	}
+	// check for max depth
+	// too deep - go ahead and do like we did above, let the toTerminal
+	// function choose the most frequent variable index to be the value on
+	// each side. the split index will determine which way to go when an
+	// input row comes in
+	if depth >= maxDepth {
+		t.Left = toTerminal(t.leftSamples)
+		t.Right = toTerminal(t.rightSamples)
+		return
+	}
+
+	// process left
+	if len(t.leftSamples) <= 1 { // only one row left (?)
+		t.Left = toTerminal(t.leftSamples)
+	} else {
+		t.Left = getSplit(t.leftSamples, variablesSubset)
+		t.Left.split(t.leftSamples, variablesSubset, depth+1)
+	}
+
+	// process right
+	if len(t.leftSamples) <= 1 { // only one row left (?)
+		t.Right = toTerminal(t.rightSamples)
+	} else {
+		t.Right = getSplit(t.rightSamples, variablesSubset)
+		t.Right.split(t.rightSamples, variablesSubset, depth+1)
+	}
+}
+
+// whatever is most represented
+func toTerminal(dataSubset [][5]int) (t *Tree) {
+	outcomes := make(map[int]int)
+	for _, row := range dataSubset {
+		if _, exists := outcomes[row[4]]; !exists {
+			outcomes[row[4]] = 1
+		} else {
+			outcomes[row[4]]++
+		}
+	}
+	var highestFreq int
+	var highestFreqVariableIndex int
+	for varIndex, count := range outcomes {
+		if count > highestFreq {
+			highestFreq = count
+			highestFreqVariableIndex = varIndex
+		}
+	}
+	return &Tree{
+		ValueIndex: highestFreqVariableIndex,
+	}
+}
+
+// predict takes a list of variable indexes and predicts a single
+// variable index as the output
+func (t *Tree) predict(rowOfVarIndexes [5]int) (predictionIndex int) {
 
 }
 
