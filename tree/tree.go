@@ -82,6 +82,7 @@ func train() {
 			dataSubsetBag := getTrainingCaseSubset(trainingCases)
 
 			variablesSubset := getVariablesSubset(indexedVariables)
+
 			tree.split(dataSubsetBag, variablesSubset)
 		}
 	}
@@ -290,4 +291,16 @@ func includes(a []string, f string) (doesInclude bool) {
 		}
 	}
 	return doesInclude
+}
+
+// splitIntoParts is a utility for doing cross validation. it splits the dataset
+// into nFolds parts so they may be tested with one fold as the control
+// group later (?)
+// cross_validation_split
+func splitIntoParts(dataset [][5]int, nFolds int) (datasetSplit [][][5]int) {
+	foldSize := nFolds / len(dataset)
+	for i := 0; i < nFolds; i++ {
+		datasetSplit = append(datasetSplit, dataset[nFolds*i:nFolds*i+1])
+	}
+	return datasetSplit
 }

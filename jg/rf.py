@@ -47,7 +47,7 @@ def accuracy_metric(actual, predicted):
     return 100. * correct / float( len(actual) )
 
 # Evaluate an algorithm using a cross validation split
-def evaluate_algorithm(dataset, algorithm, n_folds, *args):
+def evaluate_algorithm(dataset, n_folds):
     folds = cross_validation_split(dataset, n_folds)
     scores = list()
     for fold in folds:
@@ -59,7 +59,7 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
             row_copy = list(row)
             test_set.append(row_copy)
             row_copy[-1] = None
-        predicted = algorithm(train_set, test_set, *args)
+        predicted = random_forest(train_set, test_set)
         actual = [row[-1] for row in fold]
         accuracy = accuracy_metric(actual, predicted)
         scores.append(accuracy)
@@ -185,7 +185,7 @@ min_size = 1
 sample_size = 1.0
 n_features = int(sqrt(len(dataset[0])-1))
 for n_trees in [1, 5, 10]:
-    scores = evaluate_algorithm(dataset, random_forest, n_folds, max_depth, min_size, sample_size, n_trees, n_features)
+    scores = evaluate_algorithm(dataset, n_folds)
     print('Trees: %d' % n_trees)
     print('Scores: %s' % scores)
     print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
