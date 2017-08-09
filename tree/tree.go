@@ -165,7 +165,6 @@ func getSplit(dataSubset [][5]int) (t *Tree) {
 	var bestRight [][5]int
 	var bestGini float64 = 9999
 
-	variablesSubset := lastColumn(dataSubset)
 	var features []int // index of
 	for len(features) < n_features {
 		index := rand.Intn(5) // total cases per input
@@ -177,10 +176,11 @@ func getSplit(dataSubset [][5]int) (t *Tree) {
 	// The goal here seems to be to split the subsets of data on random variables,
 	// and see which one best predicts the row of data. That gets turned into a
 	// new tree
-	for _, varIndex := range variablesSubset {
+	for _, varIndex := range features {
 		for _, row := range dataSubset {
 			// create a test split
 			left, right := splitOnIndex(varIndex, row[varIndex], dataSubset)
+			// last column is the features
 			gini := calcGiniOnSplit(left, right, lastColumn(dataSubset))
 			if gini < bestGini { // lowest gini is lowest error in predicting
 				bestVariableIndex = varIndex
