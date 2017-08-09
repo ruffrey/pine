@@ -2,24 +2,30 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
 	"strings"
 )
 
-var trainingData = "Hey there my name is Jeff. What is up? How are you. Hi there dude."
+var trainingData string
 var totalTrees = 5
-var trainingRounds = 10
-var M_bags = 5
 var indexedVariables []string // index to character
 var variables map[string]int  // character to index
 var allVariableIndexes []int  // int is the same as the index
 // first 4 are considered predictors, last one is the letter index to be predicted
 var trainingCases [][5]int
 var maxDepth = 5
-var n_folds = 5 // how many folds of the dataset for cross-validation
+var n_folds = 5    // how many folds of the dataset for cross-validation
+var n_features int // Little `m`, will get rounded down
 
 func main() {
+	buf, err := ioutil.ReadFile("/Users/jpx/apollo.txt")
+	if err != nil {
+		panic(err)
+	}
+	trainingData = string(buf)
+
 	variables = make(map[string]int)
 	allChars := strings.Split(trainingData, "")
 	var c string
@@ -32,6 +38,9 @@ func main() {
 			variables[c] = newIndex
 		}
 	}
+
+	n_features = int(math.Sqrt(5)) // there are 5 items per case
+
 	for i := 0; i < len(allChars)-4; i++ {
 		nextCase := [5]int{
 			variables[allChars[i]],
@@ -99,8 +108,8 @@ func randomForest(trainSet [][5]int, testSet [][5]int) (predictions []int) {
 	var allTrees []*Tree
 	for i := 0; i < totalTrees; i++ {
 		sample := getTrainingCaseSubset(trainSet)
-		tree := getSplit(sample, allVariableIndexes)
-		tree.split(sample, allVariableIndexes, 1)
+		tree := getSplit(sample)
+		tree.split(sample, 1)
 		allTrees = append(allTrees, tree)
 	}
 	for _, row := range testSet {
@@ -149,12 +158,21 @@ type Tree struct {
 }
 
 // getSplit selects the best split point for a dataset
-func getSplit(dataSubset [][5]int, variablesSubset []int) (t *Tree) {
+func getSplit(dataSubset [][5]int) (t *Tree) {
 	var bestVariableIndex int
 	var bestValueIndex int
 	var bestLeft [][5]int
 	var bestRight [][5]int
 	var bestGini float64 = 9999
+
+	variablesSubset := lastColumn(dataSubset)
+	var features []int // index of
+	for len(features) < n_features {
+		index := rand.Intn(5) // total cases per input
+		if !includes(features, index) {
+			features = append(features, index)
+		}
+	}
 
 	// The goal here seems to be to split the subsets of data on random variables,
 	// and see which one best predicts the row of data. That gets turned into a
@@ -240,7 +258,7 @@ func withValue(splitGroup [][5]int, value int) (count float64) {
 split creates child splits for a t or makes terminals. This gives
 structure to the new tree created by getSplit()
 */
-func (t *Tree) split(dataSubset [][5]int, variablesSubset []int, depth int) {
+func (t *Tree) split(dataSubset [][5]int, depth int) {
 	defer (func() { t.leftSamples = nil; t.rightSamples = nil })()
 	// check for a no-split
 	// a perfect split in one direction, so make a terminal out of it.
@@ -270,16 +288,16 @@ func (t *Tree) split(dataSubset [][5]int, variablesSubset []int, depth int) {
 	if len(t.leftSamples) <= 1 { // only one row left (?)
 		t.LeftTerminal = toTerminal(t.leftSamples)
 	} else {
-		t.LeftNode = getSplit(t.leftSamples, variablesSubset)
-		t.LeftNode.split(t.leftSamples, variablesSubset, depth+1)
+		t.LeftNode = getSplit(t.leftSamples)
+		t.LeftNode.split(t.leftSamples, depth+1)
 	}
 
 	// process right
 	if len(t.leftSamples) <= 1 { // only one row left (?)
 		t.RightTerminal = toTerminal(t.rightSamples)
 	} else {
-		t.RightNode = getSplit(t.rightSamples, variablesSubset)
-		t.RightNode.split(t.rightSamples, variablesSubset, depth+1)
+		t.RightNode = getSplit(t.rightSamples)
+		t.RightNode.split(t.rightSamples, depth+1)
 	}
 }
 
@@ -345,6 +363,7 @@ func getTrainingCaseSubset(data [][5]int) (subset [][5]int) {
 	return subset
 }
 
+/*
 func getVariablesSubset(variables []string) (subset []string) {
 	varLen := len(variables)
 	m := int(math.Sqrt(float64(varLen)))
@@ -356,10 +375,11 @@ func getVariablesSubset(variables []string) (subset []string) {
 	}
 	return subset
 }
+*/
 
-func includes(a []string, f string) (doesInclude bool) {
-	for _, af := range a {
-		if af == f {
+func includes(arr []int, compare int) (doesInclude bool) {
+	for _, af := range arr {
+		if af == compare {
 			doesInclude = true
 			break
 		}
