@@ -137,11 +137,13 @@ func baggingPredict(trees []*Tree, row [5]float32) (mostFreqVariable float32) {
 	return mostFreqVariable
 }
 
+// unclear why training set is unused, but that matches the python implementation, and
+// it increases accuracy hugely
 func randomForest(trainSet [][5]float32, testSet [][5]float32) (predictions []float32) {
 	var allTrees []*Tree
 	for i := 0; i < totalTrees; i++ {
-		sample := getTrainingCaseSubset(trainSet)
-		tree := getSplit(sample)
+		//sample := getTrainingCaseSubset(trainSet)
+		tree := getSplit(trainingCases)
 		tree.split(1)
 		allTrees = append(allTrees, tree)
 		//fmt.Println(tree)
@@ -305,7 +307,8 @@ split creates child splits for a t or makes terminals. This gives
 structure to the new tree created by getSplit()
 */
 func (t *Tree) split(depth int) {
-	defer (func() { t.leftSamples = nil; t.rightSamples = nil })()
+	//defer (func() { t.leftSamples = nil; t.rightSamples = nil })()
+
 	// check for a no-split
 	// a perfect split in one direction, so make a terminal out of it.
 	// toTerminal will pick the most frequent variable index
@@ -339,7 +342,7 @@ func (t *Tree) split(depth int) {
 	}
 
 	// process right
-	if len(t.leftSamples) <= 1 { // only one row left (?)
+	if len(t.rightSamples) <= 1 { // only one row left (?)
 		t.RightTerminal = toTerminal(t.rightSamples)
 	} else {
 		t.RightNode = getSplit(t.rightSamples)

@@ -95,6 +95,7 @@ def get_split(dataset, n_features):
     for index in features:
         for row in dataset:
             groups = test_split(index, row[index], dataset)
+            print("groups=", groups)
             gini = gini_index(groups, class_values)
             if gini < b_score:
                 b_index, b_value, b_score, b_groups = index, row[index], gini, groups
@@ -134,7 +135,6 @@ def split(node, max_depth, min_size, n_features, depth):
 def build_tree(train, max_depth, min_size, n_features):
     root = get_split(dataset, n_features)
     split(root, max_depth, min_size, n_features, 1)
-    print(root)
     return root
 
 # Make a prediction with a decision tree
