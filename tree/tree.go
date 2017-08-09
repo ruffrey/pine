@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var trainingData string
@@ -26,6 +27,7 @@ var charMode = false
 var dataFile = "../jg/iris.csv"
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	buf, err := ioutil.ReadFile(dataFile)
 	if err != nil {
 		panic(err)
@@ -79,15 +81,16 @@ func main() {
 				allVariableIndexes = append(allVariableIndexes, newIndex)
 				variables[prediction] = newIndex
 			}
+			nextCase[4] = variables[prediction]
 			trainingCases = append(trainingCases, nextCase)
 		}
 	}
 
-	for _, n_trees := range []int{1, 5, 10} {
+	for _, n_trees := range []int{1, 5, 10, 25, 100} {
 		scores := evaluateAlgorithm()
-		fmt.Printf("Trees: %d\n", n_trees)
-		fmt.Printf("Scores: %b\n", scores)
-		fmt.Printf("Mean Accuracy: %.3f%%\n", sum(scores)/float64(len(scores)))
+		fmt.Println("Trees:", n_trees)
+		fmt.Println("  Scores:", scores)
+		fmt.Println("  Mean Accuracy:", sum(scores)/float64(len(scores)), "%")
 	}
 }
 
