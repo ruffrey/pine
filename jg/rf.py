@@ -145,19 +145,11 @@ def predict(node, row):
         if isinstance(node['right'], dict): return predict(node['right'], row)
         else: return node['right']
 
-# Create a random subsample from the dataset with replacement
-def subsample(dataset, ratio):
-    sample = list()
-    n_sample = round(len(dataset) * ratio)
-    while len(sample) < n_sample:
-        index = randrange(len(dataset))
-        sample.append(dataset[index])
-    return sample
-
 # Make a prediction with a list of bagged trees
 def bagging_predict(trees, row):
     predictions = [predict(tree, row) for tree in trees]
-    return max(set(predictions), key=predictions.count)
+    v = max(set(predictions), key=predictions.count)
+    return v
 
 # Random Forest Algorithm
 def random_forest(train, test):
@@ -168,6 +160,15 @@ def random_forest(train, test):
         trees.append(tree)
     predictions = [bagging_predict(trees, row) for row in test]
     return predictions
+
+# Create a random subsample from the dataset with replacement
+def subsample(dataset, ratio):
+    sample = list()
+    n_sample = round(len(dataset) * ratio)
+    while len(sample) < n_sample:
+        index = randrange(len(dataset))
+        sample.append(dataset[index])
+    return sample
 
 # Test the random forest algorithm
 seed(1)
@@ -184,7 +185,7 @@ max_depth = 10
 min_size = 1
 sample_size = 1.0
 n_features = int(sqrt(len(dataset[0])-1))
-for n_trees in [1, 5, 10]:
+for n_trees in [5, 10]:
     scores = evaluate_algorithm(dataset, n_folds)
     print('Trees: %d' % n_trees)
     print('Scores: %s' % scores)

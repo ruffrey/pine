@@ -52,7 +52,7 @@ func main() {
 }
 
 func evaluateAlgorithm() (scores []float64) {
-	folds := splitIntoParts(trainingCases, n_folds)
+	folds := splitIntoParts(trainingCases)
 	for foldIx, testSet := range folds {
 		// train on all except the fold `testSet`
 		var trainSet [][5]int
@@ -66,6 +66,33 @@ func evaluateAlgorithm() (scores []float64) {
 		accuracy := accuracyMetric(actual, predicted)
 		scores = append(scores, accuracy)
 	}
+
+	return scores
+}
+
+// predict takes a list of variable indexes (an input row) and predicts a single
+// variable index as the output.
+func (t *Tree) predict(row [5]int) (prediction int) {
+	if row[t.VariableIndex] < t.ValueIndex {
+		if t.LeftNode != nil {
+			return t.LeftNode.predict(row)
+		}
+		return t.LeftTerminal
+	}
+	if t.RightNode != nil {
+		return t.RightNode.predict(row)
+	}
+	return t.RightTerminal
+}
+
+// baggingPredict returns the most frequent variable index in the list of predictions
+func baggingPredict(trees []*Tree, row [5]int) (mostFreqVariable int) {
+	var predictions []int
+	for _, tree := range trees {
+		predictions = append(predictions, tree.predict(row))
+	}
+	mostFreqVariable = maxCount(predictions)
+	return mostFreqVariable
 }
 
 func randomForest(trainSet [][5]int, testSet [][5]int) (predictions []int) {
@@ -80,32 +107,6 @@ func randomForest(trainSet [][5]int, testSet [][5]int) (predictions []int) {
 		predictions = append(predictions, baggingPredict(allTrees, row))
 	}
 	return predictions
-}
-
-func baggingPredict(trees []*Tree, row [5]int) (mostFreqVariable int) {
-	var predictions []int
-	for _, tree := range trees {
-		predictions = append(predictions, tree.predict(row))
-	}
-	return maxCount(predictions)
-}
-
-func maxCount(list []int) (highestFreqIndex int) {
-	seen := make(map[int]int)
-	for _, variableIndex := range list {
-		if _, exists := seen[variableIndex]; !exists {
-			seen[variableIndex] = 0
-		}
-		seen[variableIndex]++
-	}
-	highestSeen := 0
-	for variableIndex, count := range seen {
-		if count > highestSeen {
-			highestSeen = count
-			highestFreqIndex = variableIndex
-		}
-	}
-	return highestFreqIndex
 }
 
 func accuracyMetric(actual []int, predicted []int) (accuracy float64) {
@@ -128,49 +129,23 @@ func sum(scores []float64) (s float64) {
 }
 
 /*
-Tree, aka a node, has a left and a right branch.
+Tree, for left and right, either has a Node or a terminal value
 
 When evaluating for an input row, take the input row and get the value
 at the VariableIndex in the input row. If it is less than the ValueIndex,
 go left (which might terminate). Otherwise, go right (which also might
 terminate).
-- if leftSamples or rightSamples, we still need to predict down the chain
-- if
 */
 type Tree struct {
-	VariableIndex int
-	ValueIndex    int // the value that this tree predicts (?)
-	Left          *Tree
-	leftSamples   [][5]int // test cases for left group
-	Right         *Tree
-	rightSamples  [][5]int // test cases for right group
-}
+	VariableIndex int // the variable that this tree splits on (?) (Index)
+	ValueIndex    int // the split value of this node
+	LeftNode      *Tree
+	RightNode     *Tree
+	LeftTerminal  int // index of a variable that this predicts
+	RightTerminal int // index of a variable that this predicts
 
-/*
-train
-
-1. sample N cases at random with replacement to create a subset of the data (see top layer of figure above). The subset should be about 66% of the total set.
-*/
-func train() {
-	var trees []*Tree
-
-	// initial trees
-	for i := 0; i < totalTrees; i++ {
-		// create a tree
-		t := &Tree{}
-		trees = append(trees, t)
-	}
-
-	for i := 0; i < trainingRounds; i++ {
-		var y_OutputValues []int // list of variable indexes predicted by each tree
-		for _, tree := range trees {
-			dataSubsetBag := getTrainingCaseSubset(trainingCases)
-
-			variablesSubset := getVariablesSubset(indexedVariables)
-
-			tree.split(dataSubsetBag, variablesSubset)
-		}
-	}
+	leftSamples  [][5]int // temp test cases for left group
+	rightSamples [][5]int // temp test cases for right group
 }
 
 // getSplit selects the best split point for a dataset
@@ -205,13 +180,6 @@ func getSplit(dataSubset [][5]int, variablesSubset []int) (t *Tree) {
 		rightSamples:  bestRight,
 	}
 	return t
-}
-
-func lastColumn(dataSubset [][5]int) (lastColList []int) {
-	for _, row := range dataSubset {
-		lastColList = append(lastColList, row[4])
-	}
-	return lastColList
 }
 
 /*
@@ -269,20 +237,21 @@ func withValue(splitGroup [][5]int, value int) (count float64) {
 }
 
 /*
-split creates child splits for a node or makes terminals. This gives
+split creates child splits for a t or makes terminals. This gives
 structure to the new tree created by getSplit()
 */
 func (t *Tree) split(dataSubset [][5]int, variablesSubset []int, depth int) {
+	defer (func() { t.leftSamples = nil; t.rightSamples = nil })()
 	// check for a no-split
 	// a perfect split in one direction, so make a terminal out of it.
 	// toTerminal will pick the most frequent variable index
 	if len(t.leftSamples) == 0 || len(t.rightSamples) == 0 {
 		if len(t.leftSamples) > 0 {
-			t.Left = toTerminal(t.leftSamples)
-			t.Right = toTerminal(t.leftSamples)
+			t.LeftTerminal = toTerminal(t.leftSamples)
+			t.LeftTerminal = toTerminal(t.leftSamples)
 		} else {
-			t.Left = toTerminal(t.rightSamples)
-			t.Right = toTerminal(t.rightSamples)
+			t.RightTerminal = toTerminal(t.rightSamples)
+			t.RightTerminal = toTerminal(t.rightSamples)
 		}
 		return
 	}
@@ -292,30 +261,30 @@ func (t *Tree) split(dataSubset [][5]int, variablesSubset []int, depth int) {
 	// each side. the split index will determine which way to go when an
 	// input row comes in
 	if depth >= maxDepth {
-		t.Left = toTerminal(t.leftSamples)
-		t.Right = toTerminal(t.rightSamples)
+		t.LeftTerminal = toTerminal(t.leftSamples)
+		t.RightTerminal = toTerminal(t.rightSamples)
 		return
 	}
 
 	// process left
 	if len(t.leftSamples) <= 1 { // only one row left (?)
-		t.Left = toTerminal(t.leftSamples)
+		t.LeftTerminal = toTerminal(t.leftSamples)
 	} else {
-		t.Left = getSplit(t.leftSamples, variablesSubset)
-		t.Left.split(t.leftSamples, variablesSubset, depth+1)
+		t.LeftNode = getSplit(t.leftSamples, variablesSubset)
+		t.LeftNode.split(t.leftSamples, variablesSubset, depth+1)
 	}
 
 	// process right
 	if len(t.leftSamples) <= 1 { // only one row left (?)
-		t.Right = toTerminal(t.rightSamples)
+		t.RightTerminal = toTerminal(t.rightSamples)
 	} else {
-		t.Right = getSplit(t.rightSamples, variablesSubset)
-		t.Right.split(t.rightSamples, variablesSubset, depth+1)
+		t.RightNode = getSplit(t.rightSamples, variablesSubset)
+		t.RightNode.split(t.rightSamples, variablesSubset, depth+1)
 	}
 }
 
 // whatever is most represented
-func toTerminal(dataSubset [][5]int) (t *Tree) {
+func toTerminal(dataSubset [][5]int) (value int) {
 	outcomes := make(map[int]int)
 	for _, row := range dataSubset {
 		if _, exists := outcomes[row[4]]; !exists {
@@ -332,24 +301,40 @@ func toTerminal(dataSubset [][5]int) (t *Tree) {
 			highestFreqVariableIndex = varIndex
 		}
 	}
-	return &Tree{
-		ValueIndex: highestFreqVariableIndex,
-	}
+	return highestFreqVariableIndex
 }
 
-// predict takes a list of variable indexes and predicts a single
-// variable index as the output
-func (t *Tree) predict(row [5]int) (predictionIndex int) {
-	if row[t.ValueIndex] < t.ValueIndex {
-
-	} else {
-
-	}
-}
-
+//
 //
 // utilities
 //
+//
+
+func lastColumn(dataSubset [][5]int) (lastColList []int) {
+	for _, row := range dataSubset {
+		lastColList = append(lastColList, row[4])
+	}
+	return lastColList
+}
+
+// maxCount returns whichever item in the list is most frequent
+func maxCount(list []int) (highestFreqIndex int) {
+	seen := make(map[int]int)
+	for _, variableIndex := range list {
+		if _, exists := seen[variableIndex]; !exists {
+			seen[variableIndex] = 0
+		}
+		seen[variableIndex]++
+	}
+	highestSeen := 0
+	for variableIndex, count := range seen {
+		if count > highestSeen {
+			highestSeen = count
+			highestFreqIndex = variableIndex
+		}
+	}
+	return highestFreqIndex
+}
 
 func getTrainingCaseSubset(data [][5]int) (subset [][5]int) {
 	dataLen := len(data)
@@ -382,14 +367,30 @@ func includes(a []string, f string) (doesInclude bool) {
 	return doesInclude
 }
 
-// splitIntoParts is a utility for doing cross validation. it splits the dataset
-// into nFolds parts so they may be tested with one fold as the control
-// group later (?)
-// cross_validation_split
-func splitIntoParts(dataset [][5]int, nFolds int) (datasetSplit [][][5]int) {
-	foldSize := nFolds / len(dataset)
-	for i := 0; i < nFolds; i++ {
-		datasetSplit = append(datasetSplit, dataset[nFolds*i:nFolds*i+1])
+/*
+splitIntoParts is a utility for doing cross validation. it splits the dataset
+into nFolds parts so they may be tested with one fold as the control
+group later.
+It samples with replacement from the fold.
+cross_validation_split
+*/
+func splitIntoParts(dataset [][5]int) (datasetSplit [][][5]int) {
+	dataset_copy := dataset[0:]
+	fold_size := len(dataset) / n_folds
+	for i := 0; i < n_folds; i++ {
+		var fold [][5]int
+		for {
+			// take a random index from the dataset, remove it, and add it to our
+			// fold list, which gets appended to the dataset_split
+			index := rand.Intn(len(dataset_copy))
+			item := dataset_copy[index]
+			dataset_copy = append(dataset_copy[:index], dataset_copy[index+1:]...) // delete
+			fold = append(fold, item)
+			if len(fold) < fold_size {
+				break
+			}
+		}
+		datasetSplit = append(datasetSplit, fold)
 	}
 	return datasetSplit
 }
