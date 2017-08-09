@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,10 +22,11 @@ var maxDepth = 10
 var n_folds = 5    // how many folds of the dataset for cross-validation
 var n_features int // Little `m`, will get rounded down
 
-var charMode = false
+var charMode = true
 
-//var dataFile = "/Users/jpx/apollo.txt"
-var dataFile = "../iris.csv"
+var dataFile = "/Users/jpx/apollo.txt"
+
+//var dataFile = "../iris.csv"
 
 func main() {
 	rand.Seed(time.Now().Unix())
@@ -141,15 +143,31 @@ func baggingPredict(trees []*Tree, row [5]float32) (mostFreqVariable float32) {
 // it increases accuracy hugely
 func randomForest(trainSet [][5]float32, testSet [][5]float32) (predictions []float32) {
 	var allTrees []*Tree
+	var wg sync.WaitGroup
+	var mux sync.Mutex
+	wg.Add(totalTrees)
+
 	for i := 0; i < totalTrees; i++ {
 		//sample := getTrainingCaseSubset(trainSet)
-		tree := getSplit(trainingCases)
-		tree.split(1)
-		allTrees = append(allTrees, tree)
-		//fmt.Println(tree)
+		go (func() {
+			tree := getSplit(trainingCases)
+			tree.split(1)
+			mux.Lock()
+			allTrees = append(allTrees, tree)
+			mux.Unlock()
+			wg.Done()
+		})()
 	}
+	wg.Wait()
+	wg.Add(len(testSet))
 	for _, row := range testSet {
-		predictions = append(predictions, baggingPredict(allTrees, row))
+		go (func(r [5]float32) {
+			pred := baggingPredict(allTrees, r)
+			mux.Lock()
+			predictions = append(predictions, pred)
+			mux.Unlock()
+			wg.Done()
+		})(row)
 	}
 	return predictions
 }
