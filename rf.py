@@ -134,6 +134,7 @@ def split(node, max_depth, min_size, n_features, depth):
 def build_tree(train, max_depth, min_size, n_features):
     root = get_split(dataset, n_features)
     split(root, max_depth, min_size, n_features, 1)
+    print(root)
     return root
 
 # Make a prediction with a decision tree

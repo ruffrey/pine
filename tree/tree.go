@@ -142,7 +142,7 @@ func randomForest(trainSet [][5]float32, testSet [][5]float32) (predictions []fl
 	for i := 0; i < totalTrees; i++ {
 		sample := getTrainingCaseSubset(trainSet)
 		tree := getSplit(sample)
-		tree.split(sample, 1)
+		tree.split(1)
 		allTrees = append(allTrees, tree)
 		//fmt.Println(tree)
 	}
@@ -304,7 +304,7 @@ func withValue(splitGroup [][5]float32, value float32) (count float32) {
 split creates child splits for a t or makes terminals. This gives
 structure to the new tree created by getSplit()
 */
-func (t *Tree) split(dataSubset [][5]float32, depth int) {
+func (t *Tree) split(depth int) {
 	defer (func() { t.leftSamples = nil; t.rightSamples = nil })()
 	// check for a no-split
 	// a perfect split in one direction, so make a terminal out of it.
@@ -335,7 +335,7 @@ func (t *Tree) split(dataSubset [][5]float32, depth int) {
 		t.LeftTerminal = toTerminal(t.leftSamples)
 	} else {
 		t.LeftNode = getSplit(t.leftSamples)
-		t.LeftNode.split(t.leftSamples, depth+1)
+		t.LeftNode.split(depth + 1)
 	}
 
 	// process right
@@ -343,7 +343,7 @@ func (t *Tree) split(dataSubset [][5]float32, depth int) {
 		t.RightTerminal = toTerminal(t.rightSamples)
 	} else {
 		t.RightNode = getSplit(t.rightSamples)
-		t.RightNode.split(t.rightSamples, depth+1)
+		t.RightNode.split(depth + 1)
 	}
 }
 
