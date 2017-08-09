@@ -448,16 +448,14 @@ func splitIntoParts(dataset [][5]float32) (datasetSplit [][][5]float32) {
 	fold_size := len(dataset) / n_folds
 	for i := 0; i < n_folds; i++ {
 		var fold [][5]float32
-		for {
+		for len(fold) < fold_size {
 			// take a random index from the dataset, remove it, and add it to our
 			// fold list, which gets appended to the dataset_split
+			// sampling without replacement
 			index := rand.Intn(len(dataset_copy))
 			item := dataset_copy[index]
 			dataset_copy = append(dataset_copy[:index], dataset_copy[index+1:]...) // delete
 			fold = append(fold, item)
-			if len(fold) < fold_size {
-				break
-			}
 		}
 		datasetSplit = append(datasetSplit, fold)
 	}

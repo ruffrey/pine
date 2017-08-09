@@ -37,6 +37,8 @@ def cross_validation_split(dataset, n_folds):
             index = randrange(len(dataset_copy))
             fold.append(dataset_copy.pop(index))
         dataset_split.append(fold)
+        print("fold=", len(fold))
+    print("")
     return dataset_split
 
 # Calculate accuracy percentage
@@ -95,7 +97,6 @@ def get_split(dataset, n_features):
     for index in features:
         for row in dataset:
             groups = test_split(index, row[index], dataset)
-            print("groups=", groups)
             gini = gini_index(groups, class_values)
             if gini < b_score:
                 b_index, b_value, b_score, b_groups = index, row[index], gini, groups
