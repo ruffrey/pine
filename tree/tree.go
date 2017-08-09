@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"strings"
@@ -12,9 +13,11 @@ var trainingRounds = 10
 var M_bags = 5
 var indexedVariables []string // index to character
 var variables map[string]int  // character to index
+var allVariableIndexes []int  // int is the same as the index
 // first 4 are considered predictors, last one is the letter index to be predicted
 var trainingCases [][5]int
 var maxDepth = 5
+var n_folds = 5 // how many folds of the dataset for cross-validation
 
 func main() {
 	variables = make(map[string]int)
@@ -25,6 +28,7 @@ func main() {
 		if _, existsYet := variables[c]; !existsYet {
 			indexedVariables = append(indexedVariables, c)
 			newIndex := len(indexedVariables) - 1
+			allVariableIndexes = append(allVariableIndexes, newIndex)
 			variables[c] = newIndex
 		}
 	}
@@ -39,7 +43,88 @@ func main() {
 		trainingCases = append(trainingCases, nextCase)
 	}
 
-	train()
+	for _, n_trees := range []int{1, 5, 10} {
+		scores := evaluateAlgorithm()
+		fmt.Printf("Trees: %d\n", n_trees)
+		fmt.Printf("Scores: %b\n", scores)
+		fmt.Printf("Mean Accuracy: %.3f%%\n", sum(scores)/float64(len(scores)))
+	}
+}
+
+func evaluateAlgorithm() (scores []float64) {
+	folds := splitIntoParts(trainingCases, n_folds)
+	for foldIx, testSet := range folds {
+		// train on all except the fold `testSet`
+		var trainSet [][5]int
+		for i := 0; i < len(folds); i++ {
+			if i != foldIx {
+				trainSet = append(trainSet, folds[i]...)
+			}
+		}
+		predicted := randomForest(trainSet, testSet)
+		actual := lastColumn(testSet)
+		accuracy := accuracyMetric(actual, predicted)
+		scores = append(scores, accuracy)
+	}
+}
+
+func randomForest(trainSet [][5]int, testSet [][5]int) (predictions []int) {
+	var allTrees []*Tree
+	for i := 0; i < totalTrees; i++ {
+		sample := getTrainingCaseSubset(trainSet)
+		tree := getSplit(sample, allVariableIndexes)
+		tree.split(sample, allVariableIndexes, 1)
+		allTrees = append(allTrees, tree)
+	}
+	for _, row := range testSet {
+		predictions = append(predictions, baggingPredict(allTrees, row))
+	}
+	return predictions
+}
+
+func baggingPredict(trees []*Tree, row [5]int) (mostFreqVariable int) {
+	var predictions []int
+	for _, tree := range trees {
+		predictions = append(predictions, tree.predict(row))
+	}
+	return maxCount(predictions)
+}
+
+func maxCount(list []int) (highestFreqIndex int) {
+	seen := make(map[int]int)
+	for _, variableIndex := range list {
+		if _, exists := seen[variableIndex]; !exists {
+			seen[variableIndex] = 0
+		}
+		seen[variableIndex]++
+	}
+	highestSeen := 0
+	for variableIndex, count := range seen {
+		if count > highestSeen {
+			highestSeen = count
+			highestFreqIndex = variableIndex
+		}
+	}
+	return highestFreqIndex
+}
+
+func accuracyMetric(actual []int, predicted []int) (accuracy float64) {
+	correct := 0.0
+	lenActual := len(actual)
+	for i := 0; i < lenActual; i++ {
+		if actual[i] == predicted[i] {
+			correct += 1
+		}
+	}
+	accuracy = 100 * correct / float64(lenActual)
+	return accuracy
+}
+
+func sum(scores []float64) (s float64) {
+	for _, f := range scores {
+		s += f
+	}
+	return s
 }
 
 /*
@@ -254,8 +339,12 @@ func toTerminal(dataSubset [][5]int) (t *Tree) {
 
 // predict takes a list of variable indexes and predicts a single
 // variable index as the output
-func (t *Tree) predict(rowOfVarIndexes [5]int) (predictionIndex int) {
+func (t *Tree) predict(row [5]int) (predictionIndex int) {
+	if row[t.ValueIndex] < t.ValueIndex {
 
+	} else {
+
+	}
 }
 
 //
