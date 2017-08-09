@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/rand"
+	"strconv"
 	"strings"
 )
 
@@ -19,37 +20,67 @@ var maxDepth = 5
 var n_folds = 5    // how many folds of the dataset for cross-validation
 var n_features int // Little `m`, will get rounded down
 
+var charMode = false
+
+//var dataFile = "/Users/jpx/apollo.txt"
+var dataFile = "../jg/iris.csv"
+
 func main() {
-	buf, err := ioutil.ReadFile("/Users/jpx/apollo.txt")
+	buf, err := ioutil.ReadFile(dataFile)
 	if err != nil {
 		panic(err)
 	}
 	trainingData = string(buf)
-
 	variables = make(map[string]int)
-	allChars := strings.Split(trainingData, "")
-	var c string
-	for i := 0; i < len(allChars); i++ {
-		c = allChars[i]
-		if _, existsYet := variables[c]; !existsYet {
-			indexedVariables = append(indexedVariables, c)
-			newIndex := len(indexedVariables) - 1
-			allVariableIndexes = append(allVariableIndexes, newIndex)
-			variables[c] = newIndex
-		}
-	}
 
-	n_features = int(math.Sqrt(5)) // there are 5 items per case
-
-	for i := 0; i < len(allChars)-4; i++ {
-		nextCase := [5]int{
-			variables[allChars[i]],
-			variables[allChars[i+1]],
-			variables[allChars[i+2]],
-			variables[allChars[i+3]],
-			variables[allChars[i+4]],
+	if charMode {
+		allChars := strings.Split(trainingData, "")
+		var c string
+		for i := 0; i < len(allChars); i++ {
+			c = allChars[i]
+			if _, existsYet := variables[c]; !existsYet {
+				indexedVariables = append(indexedVariables, c)
+				newIndex := len(indexedVariables) - 1
+				allVariableIndexes = append(allVariableIndexes, newIndex)
+				variables[c] = newIndex
+			}
 		}
-		trainingCases = append(trainingCases, nextCase)
+
+		n_features = int(math.Sqrt(5)) // there are 5 items per case
+
+		for i := 0; i < len(allChars)-4; i++ {
+			nextCase := [5]int{
+				variables[allChars[i]],
+				variables[allChars[i+1]],
+				variables[allChars[i+2]],
+				variables[allChars[i+3]],
+				variables[allChars[i+4]],
+			}
+			trainingCases = append(trainingCases, nextCase)
+		}
+
+	} else { // NOT character prediction mode
+		rows := strings.Split(trainingData, "\n")
+		for rowIndex, row := range rows {
+			nextCase := [5]int{}
+			cols := strings.Split(row, ",")
+			for i := 0; i < 4; i++ {
+				_flt, err := strconv.ParseFloat(cols[i], 64)
+				nextCase[i] = int(_flt) // we lose a lot of percision here, but later..better
+				if err != nil {
+					fmt.Println("row=", rowIndex, "col=", i)
+					panic(err)
+				}
+			}
+			prediction := cols[4]
+			if _, existsYet := variables[prediction]; !existsYet {
+				indexedVariables = append(indexedVariables, prediction)
+				newIndex := len(indexedVariables) - 1
+				allVariableIndexes = append(allVariableIndexes, newIndex)
+				variables[prediction] = newIndex
+			}
+			trainingCases = append(trainingCases, nextCase)
+		}
 	}
 
 	for _, n_trees := range []int{1, 5, 10} {

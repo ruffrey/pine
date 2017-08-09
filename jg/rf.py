@@ -173,7 +173,8 @@ def subsample(dataset, ratio):
 # Test the random forest algorithm
 seed(1)
 # load and prepare data
-dataset = load_csv('sonar.all-data.csv')
+# dataset = load_csv('sonar.all-data.csv')
+dataset = load_csv('iris.csv')
 # convert string attributes to integers
 for i in range(0, len(dataset[0])-1):
     str_column_to_flt(dataset, i)
