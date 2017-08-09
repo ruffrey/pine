@@ -17,7 +17,7 @@ var variables map[string]int  // character to index
 var allVariableIndexes []int  // int is the same as the index
 // first 4 are considered predictors, last one is the letter index to be predicted
 var trainingCases [][5]int
-var maxDepth = 5
+var maxDepth = 10
 var n_folds = 5    // how many folds of the dataset for cross-validation
 var n_features int // Little `m`, will get rounded down
 
