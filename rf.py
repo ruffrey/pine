@@ -47,7 +47,7 @@ def accuracy_metric(actual, predicted):
     return 100. * correct / float( len(actual) )
 
 # Evaluate an algorithm using a cross validation split
-def evaluate_algorithm(dataset, n_folds):
+def evaluate_algorithm(dataset, n_folds, max_depth, min_size, sample_size, n_trees, n_features):
     folds = cross_validation_split(dataset, n_folds)
     scores = list()
     for fold in folds:
@@ -59,7 +59,7 @@ def evaluate_algorithm(dataset, n_folds):
             row_copy = list(row)
             test_set.append(row_copy)
             row_copy[-1] = None
-        predicted = random_forest(train_set, test_set)
+        predicted = random_forest(train_set, test_set, max_depth, min_size, sample_size, n_trees, n_features
         actual = [row[-1] for row in fold]
         accuracy = accuracy_metric(actual, predicted)
         scores.append(accuracy)
@@ -145,22 +145,6 @@ def predict(node, row):
         if isinstance(node['right'], dict): return predict(node['right'], row)
         else: return node['right']
 
-# Make a prediction with a list of bagged trees
-def bagging_predict(trees, row):
-    predictions = [predict(tree, row) for tree in trees]
-    v = max(set(predictions), key=predictions.count)
-    return v
-
-# Random Forest Algorithm
-def random_forest(train, test):
-    trees = list()
-    for i in range(n_trees):
-        sample = subsample(train, sample_size)
-        tree = build_tree(sample, max_depth, min_size, n_features)
-        trees.append(tree)
-    predictions = [bagging_predict(trees, row) for row in test]
-    return predictions
-
 # Create a random subsample from the dataset with replacement
 def subsample(dataset, ratio):
     sample = list()
@@ -170,11 +154,25 @@ def subsample(dataset, ratio):
         sample.append(dataset[index])
     return sample
 
+# Make a prediction with a list of bagged trees
+def bagging_predict(trees, row):
+    predictions = [predict(tree, row) for tree in trees]
+    return max(set(predictions), key=predictions.count)
+
+# Random Forest Algorithm
+def random_forest(train, test, max_depth, min_size, sample_size, n_trees, n_features):
+    trees = list()
+    for i in range(n_trees):
+        sample = subsample(train, sample_size)
+        tree = build_tree(sample, max_depth, min_size, n_features)
+        trees.append(tree)
+    predictions = [bagging_predict(trees, row) for row in test]
+    return(predictions)
+
 # Test the random forest algorithm
 seed(1)
 # load and prepare data
-# dataset = load_csv('sonar.all-data.csv')
-dataset = load_csv('iris.csv')
+dataset = load_csv('sonar.all-data.csv')
 # convert string attributes to integers
 for i in range(0, len(dataset[0])-1):
     str_column_to_flt(dataset, i)
@@ -186,9 +184,9 @@ max_depth = 10
 min_size = 1
 sample_size = 1.0
 n_features = int(sqrt(len(dataset[0])-1))
-for n_trees in [5, 10, 100]:
-    scores = evaluate_algorithm(dataset, n_folds)
+for n_trees in [1, 5, 10]:
+    scores = evaluate_algorithm(dataset, n_folds, max_depth, min_size, sample_size, n_trees, n_features)
     print('Trees: %d' % n_trees)
-    print('  Scores: %s' % scores)
-    print('  Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
+    print('Scores: %s' % scores)
+    print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
     print('')

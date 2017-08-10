@@ -21,7 +21,7 @@ parsed into float32.
 to be able to store the last column as an index to the variable string it represents.
 */
 
-var treeSizesToTest = []int{5, 10, 100}
+var treeSizesToTest = []int{1, 5, 10}
 var trainingData string
 var totalTrees = 5
 var indexedVariables []string    // index to character
@@ -171,7 +171,7 @@ func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 	return mostFreqVariable
 }
 
-// unclear why training set is unused, but that matches the python implementation, and
+// unclear why training subsample set is unused, but that matches the python implementation, and
 // it increases accuracy hugely
 func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32) {
 	var allTrees []*Tree
