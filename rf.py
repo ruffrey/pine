@@ -37,8 +37,6 @@ def cross_validation_split(dataset, n_folds):
             index = randrange(len(dataset_copy))
             fold.append(dataset_copy.pop(index))
         dataset_split.append(fold)
-        print("fold=", len(fold))
-    print("")
     return dataset_split
 
 # Calculate accuracy percentage
@@ -188,9 +186,9 @@ max_depth = 10
 min_size = 1
 sample_size = 1.0
 n_features = int(sqrt(len(dataset[0])-1))
-for n_trees in [5, 10]:
+for n_trees in [5, 10, 100]:
     scores = evaluate_algorithm(dataset, n_folds)
     print('Trees: %d' % n_trees)
-    print('Scores: %s' % scores)
-    print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
+    print('  Scores: %s' % scores)
+    print('  Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
     print('')

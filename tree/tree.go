@@ -5,38 +5,56 @@ import (
 	"io/ioutil"
 	"math"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
+/*
+Notes:
+- Input data should be csv, where the last column is the thing being predicted.
+- The other input rows should each be a value for a feature, compabible with being
+parsed into float32.
+- Every input show should have the same number of columns.
+- Throughout the codebase, indexes are float32 instead of int when stored. This is
+to be able to store the last column as an index to the variable string it represents.
+*/
+
+var treeSizesToTest = []int{5, 10, 100}
 var trainingData string
 var totalTrees = 5
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
 var allVariableIndexes []float32 // int is the same as the index
 // first 4 are considered predictors, last one is the letter index to be predicted
-var trainingCases [][5]float32
+var trainingCases []datarow
 var maxDepth = 10
-var n_folds = 5    // how many folds of the dataset for cross-validation
-var n_features int // Little `m`, will get rounded down
+var n_folds = 5       // how many folds of the dataset for cross-validation
+var n_features int    // Little `m`, will get rounded down
+var columnsPerRow int // how many total columns in a row. must be the same.
 
 var charMode = false
 
-//var dataFile = "/Users/jpx/apollo.txt"
+//var dataFile = "/Users/jpx/apollo-short.txt"
+
 var dataFile = "../iris.csv"
 
 func main() {
+	if os.Args[1] != "" {
+		dataFile = os.Args[1]
+	}
 	rand.Seed(time.Now().Unix())
+	fmt.Println("Reading data file", dataFile)
 	buf, err := ioutil.ReadFile(dataFile)
 	if err != nil {
 		panic(err)
 	}
 	trainingData = string(buf)
 	variables = make(map[string]float32)
-	n_features = int(math.Sqrt(5)) // there are 5 items per case
 
 	if charMode {
+		columnsPerRow = 5
 		allChars := strings.Split(trainingData, "")
 		var c string
 		for i := 0; i < len(allChars); i++ {
@@ -50,7 +68,7 @@ func main() {
 		}
 
 		for i := 0; i < len(allChars)-4; i++ {
-			nextCase := [5]float32{
+			nextCase := datarow{
 				variables[allChars[i]],
 				variables[allChars[i+1]],
 				variables[allChars[i+2]],
@@ -62,10 +80,16 @@ func main() {
 
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
+		col1 := strings.Split(rows[0], ",")
+		columnsPerRow = len(col1) // globally set
 		for rowIndex, row := range rows {
-			nextCase := [5]float32{}
 			cols := strings.Split(row, ",")
-			for i := 0; i < 4; i++ {
+			if len(cols) == 0 { // blank lines ignored
+				continue
+			}
+			nextCase := make(datarow, columnsPerRow)
+			// last column is the thing the previous column features predict
+			for i := 0; i < columnsPerRow-1; i++ {
 				nc, err := strconv.ParseFloat(cols[i], 32)
 				if err != nil {
 					fmt.Println("row=", rowIndex, "col=", i)
@@ -73,7 +97,7 @@ func main() {
 				}
 				nextCase[i] = float32(nc)
 			}
-			prediction := cols[4]
+			prediction := cols[columnsPerRow-1]
 			if _, existsYet := variables[prediction]; !existsYet {
 				indexedVariables = append(indexedVariables, prediction)
 				newIndex := len(indexedVariables) - 1
@@ -85,19 +109,29 @@ func main() {
 		}
 	}
 
-	for _, n_trees := range []int{1, 5, 10, 25} {
+	// there are columnsPerRow items per data row
+	n_features = int(math.Sqrt(float64(columnsPerRow)))
+
+	fmt.Println("features:", columnsPerRow-1)
+	fmt.Println("prediction categories:", variables)
+	fmt.Println("feature split size (m):", n_features)
+
+	// run the training testing various numbers of trees to see how many we need
+	for _, n_trees := range treeSizesToTest {
 		scores := evaluateAlgorithm()
-		fmt.Println("Trees:", n_trees)
+		fmt.Println("\nTrees:", n_trees)
 		fmt.Println("  Scores:", scores)
 		fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
 	}
 }
 
+type datarow []float32
+
 func evaluateAlgorithm() (scores []float32) {
 	folds := splitIntoParts(trainingCases)
 	for foldIx, testSet := range folds {
 		// train on all except the fold `testSet`
-		var trainSet [][5]float32
+		var trainSet []datarow
 		for i := 0; i < len(folds); i++ {
 			if i != foldIx {
 				trainSet = append(trainSet, folds[i]...)
@@ -114,7 +148,7 @@ func evaluateAlgorithm() (scores []float32) {
 
 // predict takes a list of variable indexes (an input row) and predicts a single
 // variable index as the output.
-func (t *Tree) predict(row [5]float32) (prediction float32) {
+func (t *Tree) predict(row datarow) (prediction float32) {
 	if row[int(t.VariableIndex)] < t.ValueIndex {
 		if t.LeftNode != nil {
 			return t.LeftNode.predict(row)
@@ -128,7 +162,7 @@ func (t *Tree) predict(row [5]float32) (prediction float32) {
 }
 
 // baggingPredict returns the most frequent variable index in the list of predictions
-func baggingPredict(trees []*Tree, row [5]float32) (mostFreqVariable float32) {
+func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 	var predictions []float32
 	for _, tree := range trees {
 		predictions = append(predictions, tree.predict(row))
@@ -139,7 +173,7 @@ func baggingPredict(trees []*Tree, row [5]float32) (mostFreqVariable float32) {
 
 // unclear why training set is unused, but that matches the python implementation, and
 // it increases accuracy hugely
-func randomForest(trainSet [][5]float32, testSet [][5]float32) (predictions []float32) {
+func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32) {
 	var allTrees []*Tree
 
 	for i := 0; i < totalTrees; i++ {
@@ -192,8 +226,8 @@ type Tree struct {
 	LeftTerminal  float32 // index of a variable that this predicts
 	RightTerminal float32 // index of a variable that this predicts
 
-	leftSamples  [][5]float32 // temp test cases for left group
-	rightSamples [][5]float32 // temp test cases for right group
+	leftSamples  []datarow // temp test cases for left group
+	rightSamples []datarow // temp test cases for right group
 }
 
 func (t *Tree) String() string {
@@ -207,11 +241,11 @@ func (t *Tree) String() string {
 }
 
 // getSplit selects the best split point for a dataset
-func getSplit(dataSubset [][5]float32) (t *Tree) {
+func getSplit(dataSubset []datarow) (t *Tree) {
 	var bestVariableIndex float32
 	var bestValueIndex float32
-	var bestLeft [][5]float32
-	var bestRight [][5]float32
+	var bestLeft []datarow
+	var bestRight []datarow
 	var bestGini float32 = 9999
 
 	var features []int // index of
@@ -254,7 +288,7 @@ splitOnIndex splits a dataset based on an attribute and an attribute value
 
 test_split
 */
-func splitOnIndex(index int, value float32, dataSubset [][5]float32) (left, right [][5]float32) {
+func splitOnIndex(index int, value float32, dataSubset []datarow) (left, right []datarow) {
 	for _, row := range dataSubset {
 		if row[index] < value {
 			left = append(left, row)
@@ -273,7 +307,7 @@ of the training sets that were split into left and right. So we look at
 the left and right split, and how well each one predicts the expected
 output values.
 */
-func calcGiniOnSplit(left, right [][5]float32, classValues []float32) (gini float32) {
+func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32) {
 	// how many of the items in the split predict the class value?
 	for _, classVariableIndex := range classValues {
 		var size float32
@@ -294,7 +328,7 @@ func calcGiniOnSplit(left, right [][5]float32, classValues []float32) (gini floa
 	return gini
 }
 
-func withValue(splitGroup [][5]float32, value float32) (count float32) {
+func withValue(splitGroup []datarow, value float32) (count float32) {
 	for _, varIndex := range splitGroup {
 		if varIndex[4] == value {
 			count++
@@ -352,7 +386,7 @@ func (t *Tree) split(depth int) {
 }
 
 // whatever is most represented
-func toTerminal(dataSubset [][5]float32) (highestFreqVariableIndex float32) {
+func toTerminal(dataSubset []datarow) (highestFreqVariableIndex float32) {
 	outcomes := make(map[float32]int)
 	for _, row := range dataSubset {
 		if _, exists := outcomes[row[4]]; !exists {
@@ -377,7 +411,7 @@ func toTerminal(dataSubset [][5]float32) (highestFreqVariableIndex float32) {
 //
 //
 
-func lastColumn(dataSubset [][5]float32) (lastColList []float32) {
+func lastColumn(dataSubset []datarow) (lastColList []float32) {
 	for _, row := range dataSubset {
 		lastColList = append(lastColList, row[4])
 	}
@@ -403,7 +437,7 @@ func maxCount(list []float32) (highestFreqIndex float32) {
 	return highestFreqIndex
 }
 
-func getTrainingCaseSubset(data [][5]float32) (subset [][5]float32) {
+func getTrainingCaseSubset(data []datarow) (subset []datarow) {
 	dataLen := len(data)
 	twoThirds := (dataLen * 2) / 3
 	for len(subset) < twoThirds {
@@ -443,11 +477,11 @@ group later.
 It samples with replacement from the fold.
 cross_validation_split
 */
-func splitIntoParts(dataset [][5]float32) (datasetSplit [][][5]float32) {
+func splitIntoParts(dataset []datarow) (datasetSplit [][]datarow) {
 	dataset_copy := dataset[0:]
 	fold_size := len(dataset) / n_folds
 	for i := 0; i < n_folds; i++ {
-		var fold [][5]float32
+		var fold []datarow
 		for len(fold) < fold_size {
 			// take a random index from the dataset, remove it, and add it to our
 			// fold list, which gets appended to the dataset_split
