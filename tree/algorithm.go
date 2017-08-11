@@ -2,24 +2,35 @@ package main
 
 import (
 	"math/rand"
+	"sync"
 )
 
 func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 	folds := splitIntoParts(trainingCases)
-	for foldIx, testSet := range folds {
-		// train on all except the fold `testSet`
-		var trainSet []datarow
-		for i := 0; i < len(folds); i++ {
-			if i != foldIx {
-				trainSet = append(trainSet, folds[i]...)
+	var mux sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(len(folds))
+	for fIx, tst := range folds {
+		go (func(foldIx int, testSet []datarow) {
+			// train on all except the fold `testSet`
+			var trainSet []datarow
+			for i := 0; i < len(folds); i++ {
+				if i != foldIx {
+					trainSet = append(trainSet, folds[i]...)
+				}
 			}
-		}
-		predicted, treeSet := randomForest(trainSet, testSet)
-		trees = append(trees, treeSet...)
-		actual := lastColumn(testSet)
-		accuracy := accuracyMetric(actual, predicted)
-		scores = append(scores, accuracy)
+			predicted, treeSet := randomForest(trainSet, testSet)
+			mux.Lock()
+			trees = append(trees, treeSet...)
+			mux.Unlock()
+			actual := lastColumn(testSet)
+			accuracy := accuracyMetric(actual, predicted)
+			mux.Lock()
+			scores = append(scores, accuracy)
+			mux.Unlock()
+		})(fIx, tst)
 	}
+	wg.Wait()
 
 	return scores, trees
 }

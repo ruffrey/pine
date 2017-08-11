@@ -20,7 +20,7 @@ parsed into float32.
 to be able to store the last column as an index to the variable string it represents.
 */
 
-var treeSizesToTest = []int{1, 5, 10}
+var treeSizesToTest = []int{30}
 var trainingData string
 var totalTrees = 5
 var indexedVariables []string    // index to character
@@ -33,7 +33,7 @@ var n_folds = 5       // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 
-var charMode = false
+var charMode *bool
 
 // flags
 var dataFile *string
@@ -49,6 +49,7 @@ func main() {
 	pred := flag.Bool("pred", false, "Make a prediction")
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
 	seedText = flag.String("seed", "", "Predict based on this string of data")
+	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
 	flag.Parse()
 
 	if *trn {
@@ -95,7 +96,8 @@ func train() {
 	trainingData = string(buf)
 	variables = make(map[string]float32)
 
-	if charMode {
+	if *charMode {
+		fmt.Println("Running in character mode")
 		columnsPerRow = 5
 		allChars := strings.Split(trainingData, "")
 		var c string
