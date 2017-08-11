@@ -27,7 +27,6 @@ func parseRow(row string, rowIndex int) (dr datarow) {
 	if _, existsYet := variables[prediction]; !existsYet {
 		indexedVariables = append(indexedVariables, prediction)
 		newIndex := len(indexedVariables) - 1
-		allVariableIndexes = append(allVariableIndexes, float32(newIndex))
 		variables[prediction] = float32(newIndex)
 	}
 	dr[columnsPerRow-1] = variables[prediction]

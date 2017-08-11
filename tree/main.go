@@ -25,7 +25,6 @@ var trainingData string
 var totalTrees = 5
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
-var allVariableIndexes []float32 // int is the same as the index
 // first 4 are considered predictors, last one is the letter index to be predicted
 var trainingCases []datarow
 var maxDepth = 10
@@ -97,8 +96,7 @@ func train() {
 	variables = make(map[string]float32)
 
 	if *charMode {
-		fmt.Println("Running in character mode")
-		columnsPerRow = 5
+		fmt.Println("Running in character mode - one hot encoding")
 		allChars := strings.Split(trainingData, "")
 		var c string
 		for i := 0; i < len(allChars); i++ {
@@ -106,7 +104,6 @@ func train() {
 			if _, existsYet := variables[c]; !existsYet {
 				indexedVariables = append(indexedVariables, c)
 				newIndex := len(indexedVariables) - 1
-				allVariableIndexes = append(allVariableIndexes, float32(newIndex))
 				variables[c] = float32(newIndex)
 			}
 		}
@@ -149,10 +146,9 @@ func train() {
 		fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
 	}
 	s := &saveFormat{
-		Trees:              trees,
-		IndexedVariables:   indexedVariables,
-		Variables:          variables,
-		AllVariableIndexes: allVariableIndexes,
+		Trees:            trees,
+		IndexedVariables: indexedVariables,
+		Variables:        variables,
 	}
 	save(*saveTo, s)
 }
@@ -167,7 +163,6 @@ func predict() {
 	fmt.Println(len(loaded.Trees), "Trees loaded")
 
 	variables = loaded.Variables
-	allVariableIndexes = loaded.AllVariableIndexes
 	indexedVariables = loaded.IndexedVariables
 
 	// need to set this global first

@@ -97,7 +97,6 @@ type saveFormat struct {
 	Trees              []*Tree
 	IndexedVariables   []string
 	Variables          map[string]float32
-	AllVariableIndexes []float32
 }
 
 // Encode via Gob to file
