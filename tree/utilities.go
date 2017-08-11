@@ -55,7 +55,7 @@ func getVariablesSubset(Variables []string) (subset []string) {
 }
 */
 
-func includes(arr []int, compare int) (doesInclude bool) {
+func includes(arr []int32, compare int32) (doesInclude bool) {
 	for _, af := range arr {
 		if af == compare {
 			doesInclude = true
@@ -94,9 +94,9 @@ func splitIntoParts(dataset []datarow) (datasetSplit [][]datarow) {
 /* Saving */
 
 type saveFormat struct {
-	Trees              []*Tree
-	IndexedVariables   []string
-	Variables          map[string]float32
+	Trees            []*Tree
+	IndexedVariables []string
+	Variables        map[string]float32
 }
 
 // Encode via Gob to file

@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/pkg/profile"
 )
 
 /*
@@ -39,6 +41,7 @@ var dataFile *string
 var modelFile *string
 var saveTo *string
 var seedText *string
+var prof *string
 
 func main() {
 	trn := flag.Bool("train", false, "Train a model")
@@ -49,7 +52,15 @@ func main() {
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
 	seedText = flag.String("seed", "", "Predict based on this string of data")
 	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
+
+	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 	flag.Parse()
+
+	if *prof == "mem" {
+		defer profile.Start(profile.MemProfile).Stop()
+	} else if *prof == "cpu" {
+		defer profile.Start(profile.CPUProfile).Stop()
+	}
 
 	if *trn {
 		if *dataFile == "" {
