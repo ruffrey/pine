@@ -186,8 +186,12 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 }
 
 func withValue(splitGroup []datarow, value float32) (count float32) {
-	for _, varIndex := range splitGroup {
-		if varIndex[4] == value {
+	splitGroupLen := len(splitGroup)
+	lastColumn := len(splitGroup[0]) - 1
+	var row datarow
+	for i := 0; i < splitGroupLen; i++ {
+		row = splitGroup[i]
+		if row[lastColumn] == value {
 			count++
 		}
 	}
