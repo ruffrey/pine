@@ -20,12 +20,12 @@ parsed into float32.
 to be able to store the last column as an index to the variable string it represents.
 */
 
-var treeSizesToTest = []int{30}
+var treeSizesToTest = []int{1}
 var trainingData string
 var totalTrees = 5
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
-// first 4 are considered predictors, last one is the letter index to be predicted
+// first len-1 are considered predictors, last one is the letter index to be predicted
 var trainingCases []datarow
 var maxDepth = 10
 var n_folds = 5       // how many folds of the dataset for cross-validation
@@ -108,14 +108,17 @@ func train() {
 			}
 		}
 
-		for i := 0; i < len(allChars)-4; i++ {
-			nextCase := datarow{
-				variables[allChars[i]],
-				variables[allChars[i+1]],
-				variables[allChars[i+2]],
-				variables[allChars[i+3]],
-				variables[allChars[i+4]],
-			}
+		// Use one hot encoding. Each char is an feature in the row.
+		// Each letter fires the next letter. Only one feature will
+		// not be 0, the letter's index, and it will be 1. The predicted
+		// letter is the last column.
+		var prevLetter string
+		var letter string
+		columnsPerRow = len(indexedVariables) + 1
+		for i := 1; i < len(allChars); i++ {
+			nextCase := make(datarow, columnsPerRow)      // zero is default
+			nextCase[int(variables[prevLetter])] = 1      // the one that is hot
+			nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
 			trainingCases = append(trainingCases, nextCase)
 		}
 
