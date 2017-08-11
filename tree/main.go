@@ -22,9 +22,8 @@ parsed into float32.
 to be able to store the last column as an index to the variable string it represents.
 */
 
-var treeSizesToTest = []int{1}
 var trainingData string
-var totalTrees = 5
+var totalTrees *int
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
 // first len-1 are considered predictors, last one is the letter index to be predicted
@@ -47,6 +46,7 @@ func main() {
 	trn := flag.Bool("train", false, "Train a model")
 	dataFile = flag.String("data", "", "Training data input file")
 	saveTo = flag.String("save", "", "Where to save the model after training")
+	totalTrees = flag.Int("trees", 1, "How many decision trees to make")
 
 	pred := flag.Bool("pred", false, "Make a prediction")
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
@@ -147,18 +147,19 @@ func train() {
 	n_features = int(math.Sqrt(float64(columnsPerRow)))
 
 	fmt.Println("features:", columnsPerRow-1)
+	fmt.Println("data folds:", n_folds)
 	fmt.Println("prediction categories:", variables)
 	fmt.Println("feature split size (m):", n_features)
 
 	// run the training testing various numbers of Trees to see how many we need
 	var trees []*Tree
 	var scores []float32
-	for _, n_trees := range treeSizesToTest {
-		scores, trees = evaluateAlgorithm()
-		fmt.Println("\nTrees:", n_trees)
-		fmt.Println("  Scores:", scores)
-		fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
-	}
+
+	scores, trees = evaluateAlgorithm()
+	fmt.Println("\nTrees:", *totalTrees)
+	fmt.Println("  Scores:", scores)
+	fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
+
 	s := &saveFormat{
 		Trees:            trees,
 		IndexedVariables: indexedVariables,

@@ -62,7 +62,7 @@ func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 // unclear why training subsample set is unused, but that matches the python implementation, and
 // it increases accuracy hugely
 func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32, allTrees []*Tree) {
-	for i := 0; i < totalTrees; i++ {
+	for i := 0; i < *totalTrees; i++ {
 		//sample := getTrainingCaseSubset(trainSet)
 		tree := getSplit(trainingCases)
 		tree.split(1)
