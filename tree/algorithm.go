@@ -59,12 +59,13 @@ func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 	return mostFreqVariable
 }
 
-// unclear why training subsample set is unused, but that matches the python implementation, and
-// it increases accuracy hugely
+// Originally in the python implementation, the training subset was unused. That
+// seems incorrect. It decreases accuracy to only be working with the 2/3 of the training
+// subset (which was already n_folds-1/n_folds)
 func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32, allTrees []*Tree) {
-	for i := 0; i < *totalTrees; i++ {
-		//sample := getTrainingCaseSubset(trainSet)
-		tree := getSplit(trainingCases)
+	for i := 0; i < *treesPerFold; i++ {
+		sample := getTrainingCaseSubset(trainSet)
+		tree := getSplit(sample)
 		tree.split(1)
 		allTrees = append(allTrees, tree)
 	}
@@ -96,7 +97,8 @@ func sum(scores []float32) (s float32) {
 	return s
 }
 
-// getSplit selects the best split point for a dataset
+// getSplit selects the best split point for a dataset, for a few features only,
+// so this tree cares about only some features, not all of them.
 func getSplit(dataSubset []datarow) (t *Tree) {
 	var bestVariableIndex float32
 	var bestValueIndex float32
@@ -113,7 +115,7 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 		}
 	}
 
-	// The goal here seems to be to split the subsets of data on random Variables,
+	// The goal is split the subsets of data on random Variables,
 	// and see which one best predicts the row of data. That gets turned into a
 	// new tree
 	for _, varIndex := range features {

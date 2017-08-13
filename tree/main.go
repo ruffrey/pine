@@ -23,13 +23,13 @@ to be able to store the last column as an index to the variable string it repres
 */
 
 var trainingData string
-var totalTrees *int
+var treesPerFold *int
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
 // first len-1 are considered predictors, last one is the letter index to be predicted
 var trainingCases []datarow
 var maxDepth = 10
-var n_folds = 5       // how many folds of the dataset for cross-validation
+var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 
@@ -46,7 +46,8 @@ func main() {
 	trn := flag.Bool("train", false, "Train a model")
 	dataFile = flag.String("data", "", "Training data input file")
 	saveTo = flag.String("save", "", "Where to save the model after training")
-	totalTrees = flag.Int("trees", 1, "How many decision trees to make")
+	treesPerFold = flag.Int("trees", 1, "How many decision trees to make per fold of the dataset")
+	n_folds = flag.Int("folds", 5, "How many subdivisions of the dataset to make for cross-validation")
 
 	pred := flag.Bool("pred", false, "Make a prediction")
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
@@ -119,7 +120,7 @@ func train() {
 			}
 		}
 
-		// Use one hot encoding. Each char is an feature in the row.
+		// Use one hot encoding. Each char is a feature in the row.
 		// Each letter fires the next letter. Only one feature will
 		// not be 0, the letter's index, and it will be 1. The predicted
 		// letter is the last column.
@@ -156,8 +157,8 @@ func train() {
 	var scores []float32
 
 	scores, trees = evaluateAlgorithm()
-	fmt.Println("\nTrees:", *totalTrees)
-	fmt.Println("  Scores:", scores)
+	fmt.Println("\nTrees:", *treesPerFold)
+	fmt.Println("  Fold Scores:", scores)
 	fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
 
 	s := &saveFormat{
@@ -166,6 +167,7 @@ func train() {
 		Variables:        variables,
 	}
 	save(*saveTo, s)
+	fmt.Println("\nSaved", len(trees), "trees and", len(indexedVariables), "variables to", *saveTo)
 }
 
 func predict() {

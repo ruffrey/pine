@@ -32,6 +32,7 @@ func maxCount(list []float32) (highestFreqIndex float32) {
 	return highestFreqIndex
 }
 
+// getTrainingCaseSubset samples 2/3 of the rows, with replacement
 func getTrainingCaseSubset(data []datarow) (subset []datarow) {
 	dataLen := len(data)
 	twoThirds := (dataLen * 2) / 3
@@ -40,20 +41,6 @@ func getTrainingCaseSubset(data []datarow) (subset []datarow) {
 	}
 	return subset
 }
-
-/*
-func getVariablesSubset(Variables []string) (subset []string) {
-	varLen := len(Variables)
-	m := int(math.Sqrt(float32(varLen)))
-	for len(subset) < m {
-		s := Variables[rand.Intn(varLen)]
-		if !includes(subset, s) {
-			subset = append(subset, s)
-		}
-	}
-	return subset
-}
-*/
 
 func includes(arr []int32, compare int32) (doesInclude bool) {
 	for _, af := range arr {
@@ -74,8 +61,8 @@ cross_validation_split
 */
 func splitIntoParts(dataset []datarow) (datasetSplit [][]datarow) {
 	dataset_copy := dataset[0:]
-	fold_size := len(dataset) / n_folds
-	for i := 0; i < n_folds; i++ {
+	fold_size := len(dataset) / *n_folds
+	for i := 0; i < *n_folds; i++ {
 		var fold []datarow
 		for len(fold) < fold_size {
 			// take a random index from the dataset, remove it, and add it to our
