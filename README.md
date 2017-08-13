@@ -65,6 +65,7 @@ A bag selects a random training item from the set, and “fits trees” to the s
 
 f_b is a decision or regression tree
 
+```
 for b := 0; b < B; b++ {
   index = randomIndex(X)
   sample = X[index]
@@ -73,3 +74,4 @@ for b := 0; b < B; b++ {
 
   majorityVote = getVote(trees) // ??
 }
+```
