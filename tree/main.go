@@ -138,7 +138,6 @@ func train() {
 		}
 
 		trainingCases = encodeLettersToCases(allChars)
-
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
 		col1 := strings.Split(rows[0], ",")
@@ -218,6 +217,8 @@ func encodeLettersToCases(allChars []string) (cases []datarow) {
 	var letter string
 	columnsPerRow = len(indexedVariables) + 1
 	for i := 1; i < len(allChars); i++ {
+		letter = allChars[i]
+		prevLetter = allChars[i-1]
 		nextCase := make(datarow, columnsPerRow)      // zero is default
 		nextCase[int(variables[prevLetter])] = 1      // the one that is hot
 		nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
