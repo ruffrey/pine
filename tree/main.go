@@ -9,6 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
+	"os"
+
+	"path/filepath"
+
 	"github.com/pkg/profile"
 )
 
@@ -55,6 +61,8 @@ func main() {
 	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
+
+	tojson := flag.Bool("tojson", false, "Convert a model to json")
 	flag.Parse()
 
 	if *prof == "mem" {
@@ -86,6 +94,15 @@ func main() {
 			return
 		}
 		predict()
+		return
+	}
+
+	if *tojson {
+		if *modelFile == "" {
+			fmt.Println("-model is required and should be a path for loading the pretrained model")
+			return
+		}
+		gobToJson()
 		return
 	}
 
@@ -207,4 +224,25 @@ func encodeLettersToCases(allChars []string) (cases []datarow) {
 		cases = append(cases, nextCase)
 	}
 	return cases
+}
+
+func gobToJson() {
+	var loaded saveFormat
+	err := load(*modelFile, &loaded)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(len(loaded.Trees), "Trees loaded")
+
+	buf, err := json.Marshal(loaded)
+	if err != nil {
+		panic(err)
+	}
+	base := filepath.Base(*modelFile)
+	outFile := strings.Replace(base, filepath.Ext(base), ".json", 1)
+	err = ioutil.WriteFile(outFile, buf, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Wrote JSON to", outFile)
 }
