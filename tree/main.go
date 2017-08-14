@@ -148,7 +148,7 @@ func train() {
 	n_features = int(math.Sqrt(float64(columnsPerRow)))
 
 	fmt.Println("features:", columnsPerRow-1)
-	fmt.Println("data folds:", n_folds)
+	fmt.Println("data folds:", *n_folds)
 	fmt.Println("prediction categories:", variables)
 	fmt.Println("feature split size (m):", n_features)
 
