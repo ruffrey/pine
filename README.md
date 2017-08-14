@@ -2,6 +2,8 @@
 
 ensembles of random decision trees
 
+![random decision tree ensembles training](decision-ensembles.png)
+
 ## how it works
 
 Given a data set, rows of input features x, where the last column is the expected category y. Often these are encoded in CSV format. The data should be encoded to float32 parseable values.
