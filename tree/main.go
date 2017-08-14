@@ -120,19 +120,7 @@ func train() {
 			}
 		}
 
-		// Use one hot encoding. Each char is a feature in the row.
-		// Each letter fires the next letter. Only one feature will
-		// not be 0, the letter's index, and it will be 1. The predicted
-		// letter is the last column.
-		var prevLetter string
-		var letter string
-		columnsPerRow = len(indexedVariables) + 1
-		for i := 1; i < len(allChars); i++ {
-			nextCase := make(datarow, columnsPerRow)      // zero is default
-			nextCase[int(variables[prevLetter])] = 1      // the one that is hot
-			nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
-			trainingCases = append(trainingCases, nextCase)
-		}
+		trainingCases = encodeLettersToCases(allChars)
 
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
@@ -151,6 +139,7 @@ func train() {
 	fmt.Println("data folds:", *n_folds)
 	fmt.Println("prediction categories:", variables)
 	fmt.Println("feature split size (m):", n_features)
+	fmt.Println("training cases:", len(trainingCases))
 
 	// run the training testing various numbers of Trees to see how many we need
 	var trees []*Tree
@@ -182,11 +171,40 @@ func predict() {
 	variables = loaded.Variables
 	indexedVariables = loaded.IndexedVariables
 
-	// need to set this global first
-	cols := strings.Split(*seedText, ",")
-	columnsPerRow = len(cols)
+	var inputRows []datarow
 
-	inputRow := parseRow(*seedText, 0)
-	mostFreqVar := baggingPredict(loaded.Trees, inputRow)
-	fmt.Println("Prediction:", indexedVariables[int(mostFreqVar)])
+	if *charMode {
+		seedChars := strings.Split(*seedText, "")
+		inputRows = encodeLettersToCases(seedChars)
+	} else {
+		// need to set this global first
+		cols := strings.Split(*seedText, ",")
+		columnsPerRow = len(cols)
+
+		inputRows = []datarow{parseRow(*seedText, 0)}
+	}
+
+	for _, irow := range inputRows {
+		mostFreqVar := baggingPredict(loaded.Trees, irow)
+		fmt.Print(indexedVariables[int(mostFreqVar)])
+	}
+	fmt.Println()
+}
+
+/*
+encodeLettersToCases uses one hot encoding. Each char is a feature in the row.
+Each letter fires the next letter. Only one feature will not be 0, the letter's
+index, and it will be 1. The predicted letter is the last column.
+*/
+func encodeLettersToCases(allChars []string) (cases []datarow) {
+	var prevLetter string
+	var letter string
+	columnsPerRow = len(indexedVariables) + 1
+	for i := 1; i < len(allChars); i++ {
+		nextCase := make(datarow, columnsPerRow)      // zero is default
+		nextCase[int(variables[prevLetter])] = 1      // the one that is hot
+		nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
+		cases = append(cases, nextCase)
+	}
+	return cases
 }
