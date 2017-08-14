@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	"sync"
 )
@@ -19,6 +20,7 @@ func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 					trainSet = append(trainSet, folds[i]...)
 				}
 			}
+			log.Println("Fold start:", foldIx)
 			predicted, treeSet := randomForest(trainSet, testSet)
 			mux.Lock()
 			trees = append(trees, treeSet...)
@@ -28,6 +30,7 @@ func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 			mux.Lock()
 			scores = append(scores, accuracy)
 			mux.Unlock()
+			log.Println("Fold end:", foldIx)
 			wg.Done()
 		})(fIx, tst)
 	}
@@ -70,6 +73,7 @@ func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32,
 		tree := getSplit(sample)
 		tree.split(1)
 		allTrees = append(allTrees, tree)
+		log.Println("split tree", i, "/", *treesPerFold)
 	}
 	for _, row := range testSet {
 		pred := baggingPredict(allTrees, row)
