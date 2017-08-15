@@ -139,7 +139,7 @@ func train() {
 			}
 		}
 		fmt.Println("sequence length=", sequenceLength)
-		trainingCases = encodeLettersToCases(allChars)
+		trainingCases = encodeLettersToCases(allChars, false)
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
 		col1 := strings.Split(rows[0], ",")
@@ -193,7 +193,7 @@ func predict() {
 
 	if *charMode {
 		seedChars := strings.Split(*seedText, "")
-		inputRows = encodeLettersToCases(seedChars)
+		inputRows = encodeLettersToCases(seedChars, true)
 	} else {
 		// need to set this global first
 		cols := strings.Split(*seedText, ",")
@@ -223,14 +223,14 @@ will get an equally increased amount in the training case. So in essence:
 
 The predicted letter is the last column.
 */
-func encodeLettersToCases(allChars []string) (cases []datarow) {
+func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow) {
 	columnsPerRow = len(indexedVariables) + 1
 	var letter string
 	var sequenceWeight float32
 	var indexDistance int
 
 	// for predictions shorter than sequence length
-	if sequenceLength > len(allChars) {
+	if isPrediction {
 		//sequenceLength = len(allChars) - 1
 		sequenceLength = 2
 	}
