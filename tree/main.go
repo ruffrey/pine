@@ -231,8 +231,16 @@ func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow
 
 	// for predictions shorter than sequence length
 	if isPrediction {
-		//sequenceLength = len(allChars) - 1
-		sequenceLength = 2
+		// fill in whatever is missing in a full sequence with randomness
+		var rem int
+		if len(allChars) < sequenceLength {
+			rem = sequenceLength - len(allChars)
+		} else {
+			rem = len(allChars) % sequenceLength
+		}
+		for i := 0; i < rem+1; i++ {
+			allChars = append(allChars, indexedVariables[rand.Intn(len(variables))])
+		}
 	}
 
 	for letterIndex := sequenceLength; letterIndex < len(allChars); letterIndex++ {
