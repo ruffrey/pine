@@ -1,8 +1,6 @@
 ## Short term
 
-- [x] allow arbitrary input row length
-- [ ] extract into public repo with only categorical prediction
-- [x] try one-hot encoding for text, instead, where each column is a single letter, and the last column is the index of the letter predicted
+- [ ] once prediction and network depth is better, fill prediction cases with randomness when the input text does not reach the sequenceLength
 
 ## Long term
 
