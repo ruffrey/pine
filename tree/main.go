@@ -38,6 +38,8 @@ var maxDepth = 10
 var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
+// how many inputs are fed into the network during a sample; similar to sequence length with neural networks
+var sequenceLength int = 25
 
 var charMode *bool
 
@@ -136,7 +138,7 @@ func train() {
 				variables[c] = float32(newIndex)
 			}
 		}
-
+		fmt.Println("sequence length=", sequenceLength)
 		trainingCases = encodeLettersToCases(allChars)
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
@@ -208,21 +210,51 @@ func predict() {
 }
 
 /*
-encodeLettersToCases uses one hot encoding. Each char is a feature in the row.
-Each letter fires the next letter. Only one feature will not be 0, the letter's
-index, and it will be 1. The predicted letter is the last column.
+encodeLettersToCases uses modified one hot encoding, so called "multi-hot encoding."
+
+Each char is a feature in the row.
+
+Each letter fires the next letter. Each character of a set with length `sequenceLength`
+will get an equally increased amount in the training case. So in essence:
+
+"hey u"
+{"h", "e", "y", " ", "u"} 	   (but with their variable indexes)
+{0.2, 0.4, 0.6, 0.8, 1.0}
+
+The predicted letter is the last column.
 */
 func encodeLettersToCases(allChars []string) (cases []datarow) {
-	var prevLetter string
-	var letter string
 	columnsPerRow = len(indexedVariables) + 1
-	for i := 1; i < len(allChars); i++ {
-		letter = allChars[i]
-		prevLetter = allChars[i-1]
-		nextCase := make(datarow, columnsPerRow)      // zero is default
-		nextCase[int(variables[prevLetter])] = 1      // the one that is hot
+	var letter string
+	var sequenceWeight float32
+	var indexDistance int
+
+	// for predictions shorter than sequence length
+	if sequenceLength > len(allChars) {
+		//sequenceLength = len(allChars) - 1
+		sequenceLength = 2
+	}
+
+	for letterIndex := sequenceLength; letterIndex < len(allChars); letterIndex++ {
+
+		nextCase := make(datarow, columnsPerRow) // zero is default
+
+		// many-hot encoding
+		for i := letterIndex - sequenceLength; i < letterIndex; i++ {
+			letter = allChars[i]
+			indexDistance = letterIndex - i
+			sequenceWeight = 1 + (1-float32(indexDistance))/float32(sequenceLength)
+			if sequenceWeight > 1 || sequenceWeight <= 0 {
+				fmt.Println("i=", i, "letter=", letter, "indexDistance=", indexDistance, "sequenceWeight=", sequenceWeight)
+				panic("sequence weight should be between 0 and 1.0")
+			}
+			nextCase[int(variables[letter])] = sequenceWeight
+		}
+
+		letter = allChars[letterIndex]
 		nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
 		cases = append(cases, nextCase)
+		//fmt.Println(nextCase)
 	}
 	return cases
 }
