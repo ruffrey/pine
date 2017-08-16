@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"math/rand"
 	"os"
-	"sync"
 )
 
 func lastColumn(dataSubset []datarow) (lastColList []float32) {
@@ -61,30 +60,24 @@ It samples with replacement from the fold.
 cross_validation_split
 */
 func splitIntoParts(dataset []datarow) (datasetSplit [][]datarow) {
-	dataset_copy := dataset[0:]
 	fold_size := len(dataset) / *n_folds
-	var wg sync.WaitGroup
-	var mux sync.Mutex
-	wg.Add(*n_folds)
-	for i := 0; i < *n_folds; i++ {
-		go (func() {
-			var fold []datarow
-			for len(fold) < fold_size {
-				// take a random index from the dataset, remove it, and add it to our
-				// fold list, which gets appended to the dataset_split
-				// sampling without replacement
-				index := rand.Intn(len(dataset_copy))
-				item := dataset_copy[index]
-				dataset_copy = append(dataset_copy[:index], dataset_copy[index+1:]...) // delete
-				fold = append(fold, item)
-			}
-			mux.Lock()
-			datasetSplit = append(datasetSplit, fold)
-			mux.Unlock()
-			wg.Done()
-		})()
+	// shuffle the array indexes
+	perm := rand.Perm(len(dataset))
+	// split into n_folds parts
+	permIter := 0
+	for f := 0; f < *n_folds; f++ {
+		var fold []datarow
+		for len(fold) < fold_size {
+			// take a random index from the dataset, remove it, and add it to our
+			// fold list, which gets appended to the dataset_split
+			// sampling without replacement
+			index := perm[permIter]
+			item := dataset[index]
+			fold = append(fold, item)
+			permIter++
+		}
+		datasetSplit = append(datasetSplit, fold)
 	}
-	wg.Wait()
 	return datasetSplit
 }
 
