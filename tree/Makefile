@@ -1,3 +1,4 @@
+default: build
 deps:
 	go get github.com/pkg/profile
 build:
