@@ -1,5 +1,14 @@
 package main
 
+/*
+#include <stdio.h>
+#include <stdbool.h>
+bool comp(float a, float b) {
+    return a == b;
+}
+*/
+import "C"
+
 import (
 	"log"
 	"math/rand"
@@ -196,9 +205,12 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 func withValue(splitGroup []datarow, value float32) (count float32) {
 	splitGroupLen := len(splitGroup)
 	var prediction float32
+	var p C.bool
+	c_value := C.float(value)
 	for i := 0; i < splitGroupLen; i++ {
 		prediction = splitGroup[i][lastColumnIndex]
-		if prediction == value {
+		p = C.comp(C.float(prediction), c_value)
+		if p {
 			count++
 		}
 	}
