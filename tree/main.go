@@ -39,6 +39,7 @@ var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
+var lastColumnIndex int // columnsPerRow minus 1
 var sequenceLength int = 25
 
 var charMode *bool
@@ -153,8 +154,9 @@ func train() {
 
 	// there are columnsPerRow items per data row
 	n_features = int(math.Sqrt(float64(columnsPerRow)))
+	lastColumnIndex = columnsPerRow - 1
 
-	fmt.Println("features:", columnsPerRow-1)
+	fmt.Println("features:", lastColumnIndex)
 	fmt.Println("data folds:", *n_folds)
 	fmt.Println("prediction categories:", variables)
 	fmt.Println("feature split size (m):", n_features)
@@ -199,6 +201,7 @@ func predict() {
 		// need to set this global first
 		cols := strings.Split(*seedText, ",")
 		columnsPerRow = len(cols)
+		lastColumnIndex = columnsPerRow - 1
 
 		inputRows = []datarow{parseRow(*seedText, 0)}
 	}
@@ -226,6 +229,7 @@ The predicted letter is the last column.
 */
 func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow) {
 	columnsPerRow = len(indexedVariables) + 1
+	lastColumnIndex = columnsPerRow - 1
 	var letter string
 	var sequenceWeight float32
 	var indexDistance int
@@ -261,7 +265,7 @@ func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow
 		}
 
 		letter = allChars[letterIndex]
-		nextCase[columnsPerRow-1] = variables[letter] // the variable index being predicted
+		nextCase[lastColumnIndex] = variables[letter] // the variable index being predicted
 		cases = append(cases, nextCase)
 		//fmt.Println(nextCase)
 	}

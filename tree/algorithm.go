@@ -3,38 +3,37 @@ package main
 import (
 	"log"
 	"math/rand"
-	"sync"
 )
 
 func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 	folds := splitIntoParts(trainingCases)
-	var mux sync.Mutex
-	var wg sync.WaitGroup
-	wg.Add(len(folds))
-	for fIx, tst := range folds {
-		go (func(foldIx int, testSet []datarow) {
-			// train on all except the fold `testSet`
-			var trainSet []datarow
-			for i := 0; i < len(folds); i++ {
-				if i != foldIx {
-					trainSet = append(trainSet, folds[i]...)
-				}
+	//var mux sync.Mutex
+	//var wg sync.WaitGroup
+	//wg.Add(len(folds))
+	for foldIx, testSet := range folds {
+		//go (func(foldIx int, testSet []datarow) {
+		// train on all except the fold `testSet`
+		var trainSet []datarow
+		for i := 0; i < len(folds); i++ {
+			if i != foldIx {
+				trainSet = append(trainSet, folds[i]...)
 			}
-			log.Println("Fold start:", foldIx)
-			predicted, treeSet := randomForest(trainSet, testSet)
-			mux.Lock()
-			trees = append(trees, treeSet...)
-			mux.Unlock()
-			actual := lastColumn(testSet)
-			accuracy := accuracyMetric(actual, predicted)
-			mux.Lock()
-			scores = append(scores, accuracy)
-			mux.Unlock()
-			log.Println("Fold end:", foldIx)
-			wg.Done()
-		})(fIx, tst)
+		}
+		log.Println("Fold start:", foldIx)
+		predicted, treeSet := randomForest(trainSet, testSet)
+		//mux.Lock()
+		trees = append(trees, treeSet...)
+		//mux.Unlock()
+		actual := lastColumn(testSet)
+		accuracy := accuracyMetric(actual, predicted)
+		//mux.Lock()
+		scores = append(scores, accuracy)
+		//mux.Unlock()
+		log.Println("Fold end:", foldIx)
+		//wg.Done()
+		//})(fIx, tst)
 	}
-	wg.Wait()
+	//wg.Wait()
 
 	return scores, trees
 }
@@ -193,13 +192,13 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 	return gini
 }
 
+// this function takes up about 91 - 98% of cpu burn.
 func withValue(splitGroup []datarow, value float32) (count float32) {
 	splitGroupLen := len(splitGroup)
-	lastColumn := len(splitGroup[0]) - 1
-	var row datarow
+	var prediction float32
 	for i := 0; i < splitGroupLen; i++ {
-		row = splitGroup[i]
-		if row[lastColumn] == value {
+		prediction = splitGroup[i][lastColumnIndex]
+		if prediction == value {
 			count++
 		}
 	}

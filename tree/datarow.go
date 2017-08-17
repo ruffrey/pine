@@ -15,7 +15,7 @@ func parseRow(row string, rowIndex int) (dr datarow) {
 	}
 	dr = make(datarow, columnsPerRow)
 	// last column is the thing the previous column features predict
-	for i := 0; i < columnsPerRow-1; i++ {
+	for i := 0; i < lastColumnIndex; i++ {
 		nc, err := strconv.ParseFloat(cols[i], 32)
 		if err != nil {
 			fmt.Println("row=", rowIndex, "col=", i)
@@ -23,13 +23,13 @@ func parseRow(row string, rowIndex int) (dr datarow) {
 		}
 		dr[i] = float32(nc)
 	}
-	prediction := cols[columnsPerRow-1]
+	prediction := cols[lastColumnIndex]
 	if _, existsYet := variables[prediction]; !existsYet {
 		indexedVariables = append(indexedVariables, prediction)
 		newIndex := len(indexedVariables) - 1
 		variables[prediction] = float32(newIndex)
 	}
-	dr[columnsPerRow-1] = variables[prediction]
+	dr[lastColumnIndex] = variables[prediction]
 
 	return dr
 }
