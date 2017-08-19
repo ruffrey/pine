@@ -1,8 +1,8 @@
 package main
 
-func oneIfTrue(val1, val2 float32) (oit float32) {
+func oneIfTrue(val1, val2 float32) (inc float32) {
 	if val1 == val2 {
-		oit = 1
+		inc = 1
 	}
-	return oit
+	return inc
 }
