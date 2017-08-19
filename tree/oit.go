@@ -1,8 +1,8 @@
 package main
 
-func oneIfTrue(val1, val2 float32) (inc float32) {
-	if val1 == val2 {
-		inc = 1
+func oneIfTrue(x, y float32) float32 {
+	if x == y {
+		return 1
 	}
-	return inc
+	return 0
 }
