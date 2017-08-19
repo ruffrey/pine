@@ -65,14 +65,16 @@ func splitIntoParts(dataset []datarow) (datasetSplit [][]datarow) {
 	perm := rand.Perm(len(dataset))
 	// split into n_folds parts
 	permIter := 0
+	index := 0
+	var item datarow
 	for f := 0; f < *n_folds; f++ {
 		var fold []datarow
 		for len(fold) < fold_size {
 			// take a random index from the dataset, remove it, and add it to our
 			// fold list, which gets appended to the dataset_split
 			// sampling without replacement
-			index := perm[permIter]
-			item := dataset[index]
+			index = perm[permIter]
+			item = dataset[index]
 			fold = append(fold, item)
 			permIter++
 		}
