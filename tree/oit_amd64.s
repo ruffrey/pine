@@ -3,7 +3,7 @@
 #include "textflag.h"
 
 // func oneIfTrue(x, y float32) float32
-TEXT ·oneIfTrue(SB),$8
+TEXT ·oneIfTrue(SB),$0
     MOVQ $0, ret+8(FP) // default 0 to the return value
     MOVQ x+0(FP), BX // put first arg in the BX register
     SUBQ BX, y+4(FP) // subtract the second arg from the first
