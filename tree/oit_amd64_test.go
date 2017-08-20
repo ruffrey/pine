@@ -12,21 +12,29 @@ func TestOit(t *testing.T) {
 		var x float32 = 11
 		var y float32 = 11
 		var expected float32 = 1
-		assert.Equal(t, expected, oneIfTrue(x, y))
+		var actual float32
+
+		actual = oneIfTrue(x, y)
+		assert.Equal(t, expected, actual)
 
 		x = 54
 		y = 54
-		assert.Equal(t, expected, oneIfTrue(x, y))
+		actual = oneIfTrue(x, y)
+		assert.Equal(t, expected, actual)
 	})
 	t.Run("returns 0 when the different", func(t *testing.T) {
 		var x float32 = 23
 		var y float32 = 19
 		var expected float32 = 0
-		assert.Equal(t, expected, oneIfTrue(x, y))
+		var actual float32
+
+		actual = oneIfTrue(x, y)
+		assert.Equal(t, expected, actual)
 
 		x = 0
 		y = 3
-		assert.Equal(t, expected, oneIfTrue(x, y))
+		actual = oneIfTrue(x, y)
+		assert.Equal(t, expected, actual)
 	})
 }
 
