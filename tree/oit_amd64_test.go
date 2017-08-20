@@ -12,7 +12,7 @@ func TestOit(t *testing.T) {
 		var x float32 = 11
 		var y float32 = 11
 		var expected float32 = 1
-		var actual float32
+		var actual float32 = 9999
 
 		actual = oneIfTrue(x, y)
 		assert.Equal(t, expected, actual)
@@ -26,7 +26,7 @@ func TestOit(t *testing.T) {
 		var x float32 = 23
 		var y float32 = 19
 		var expected float32 = 0
-		var actual float32
+		var actual float32 = 9999
 
 		actual = oneIfTrue(x, y)
 		assert.Equal(t, expected, actual)
