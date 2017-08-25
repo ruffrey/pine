@@ -4,12 +4,12 @@
 
 // func oneIfTrue(x, y float32) float32
 TEXT ·oneIfTrue(SB),NOSPLIT,$0
-    MOVQ x+0(FP), CX // put first arg in the CX register
-    MOVQ y+4(FP), SI  // put second arg in SI register
-    CMPQ CX, SI // see if first arg equals second arg
-    JE RONE // when equal, change the return value
-    MOVQ $0, ret+8(FP) // default 0 as the return value
+    MOVSS x+0(FP), X0 // put first arg in a register
+    MOVSS y+4(FP), X1  // put second arg in a register
+    UCOMISS X0, X1
+    JNE NOTEQ // when not equal return 0
+    MOVQ $0x3f800000, ret+8(FP) // when equal return 0
     RET
-RONE:
-    MOVQ $1, ret+8(FP) // move 1 to the return value
+NOTEQ:
+    MOVQ $0x00000000, ret+8(FP) // move 0 to the return value
     RET

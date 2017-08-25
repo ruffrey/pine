@@ -7,6 +7,7 @@ tree/tree
 
 # Test binary, build with `go test -c`
 *.test
+tst
 
 # save data
 *.gob
