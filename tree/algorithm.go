@@ -179,31 +179,17 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 		// left
 		if len(left) != 0 {
 			size = float32(len(left))
-			proportion = withValue(left, classVariableIndex) / size
+			proportion = withValue(lastColumnIndex, classVariableIndex, left) / size
 			gini += proportion * (1 - proportion)
 		}
 		// right is the same code
 		if len(right) != 0 {
 			size = float32(len(right))
-			proportion = withValue(right, classVariableIndex) / size
+			proportion = withValue(lastColumnIndex, classVariableIndex, right) / size
 			gini += proportion * (1 - proportion)
 		}
 	}
 	return gini
-}
-
-// this function takes up about 91 - 98% of cpu burn.
-func withValue(splitGroup []datarow, value float32) (count float32) {
-	splitGroupLen := len(splitGroup)
-	var prediction float32
-	var inc float32
-	for i := 0; i < splitGroupLen; i++ {
-		prediction = splitGroup[i][lastColumnIndex]
-		inc = oneIfTrue(prediction, value)
-		count += inc
-	}
-
-	return count
 }
 
 /*
