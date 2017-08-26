@@ -1,4 +1,4 @@
-package main
+package asm_examples
 
 import (
 	"math/rand"

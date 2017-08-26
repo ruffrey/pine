@@ -1,6 +1,6 @@
 // +build !amd64,gc
 
-package main
+package asm_examples
 
 // this function takes up about 91 - 98% of cpu burn.
 func withValue(lastColIndex int, value float32, splitGroup []datarow) (count float32) {
