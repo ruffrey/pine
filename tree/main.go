@@ -39,8 +39,8 @@ var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
-var lastColumnIndex int // columnsPerRow minus 1
-var sequenceLength int = 25
+var lastColumnIndex int     // columnsPerRow minus 1
+var sequenceLength int = 25 // for character mode
 
 var charMode *bool
 
@@ -50,6 +50,8 @@ var modelFile *string
 var saveTo *string
 var seedText *string
 var prof *string
+
+/* setColumnGlobals(int) MUST be called as soon as possible */
 
 func main() {
 	trn := flag.Bool("train", false, "Train a model")
@@ -145,7 +147,7 @@ func train() {
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
 		col1 := strings.Split(rows[0], ",")
-		columnsPerRow = len(col1) // globally set
+		setColumnGlobals(len(col1))
 		for rowIndex, row := range rows {
 			nextCase := parseRow(row, rowIndex)
 			trainingCases = append(trainingCases, nextCase)
@@ -154,7 +156,6 @@ func train() {
 
 	// there are columnsPerRow items per data row
 	n_features = int(math.Sqrt(float64(columnsPerRow)))
-	lastColumnIndex = columnsPerRow - 1
 
 	fmt.Println("features:", lastColumnIndex)
 	fmt.Println("data folds:", *n_folds)
@@ -180,6 +181,11 @@ func train() {
 	fmt.Println("\nSaved", len(trees), "trees and", len(indexedVariables), "variables to", *saveTo)
 }
 
+func setColumnGlobals(lenFirstRow int) {
+	columnsPerRow = lenFirstRow
+	lastColumnIndex = columnsPerRow - 1
+}
+
 func predict() {
 	var loaded saveFormat
 	err := load(*modelFile, &loaded)
@@ -199,9 +205,8 @@ func predict() {
 		inputRows = encodeLettersToCases(seedChars, true)
 	} else {
 		// need to set this global first
-		cols := strings.Split(*seedText, ",")
-		columnsPerRow = len(cols)
-		lastColumnIndex = columnsPerRow - 1
+		inputRow := strings.Split(*seedText, ",")
+		setColumnGlobals(len(inputRow))
 
 		inputRows = []datarow{parseRow(*seedText, 0)}
 	}
@@ -228,8 +233,7 @@ will get an equally increased amount in the training case. So in essence:
 The predicted letter is the last column.
 */
 func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow) {
-	columnsPerRow = len(indexedVariables) + 1
-	lastColumnIndex = columnsPerRow - 1
+	setColumnGlobals(len(indexedVariables) + 1)
 	var letter string
 	var sequenceWeight float32
 	var indexDistance int
