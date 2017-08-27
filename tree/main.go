@@ -42,7 +42,7 @@ var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
 var lastColumnIndex int     // columnsPerRow minus 1
-var sequenceLength int = 25 // for character mode
+var sequenceLength int = 10 // for character mode
 
 var charMode *bool
 
