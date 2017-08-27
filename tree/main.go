@@ -290,8 +290,13 @@ func gobToJson() {
 	if err != nil {
 		panic(err)
 	}
-	base := filepath.Base(*modelFile)
-	outFile := strings.Replace(base, filepath.Ext(base), ".json", 1)
+	var outFile string
+	if *saveTo != "" {
+		outFile = *saveTo
+	} else {
+		base := filepath.Base(*modelFile)
+		outFile = strings.Replace(base, filepath.Ext(base), ".json", 1)
+	}
 	err = ioutil.WriteFile(outFile, buf, os.ModePerm)
 	if err != nil {
 		panic(err)
