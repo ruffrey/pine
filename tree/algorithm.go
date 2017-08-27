@@ -114,6 +114,10 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	var bestRight []datarow
 	var bestGini float32 = 9999
 
+	// prevent many malloc events
+	var leftLastCols []float32
+	var rightLastCols []float32
+
 	var features []int32 // index of
 	for len(features) < n_features {
 		// the following line is quite slow
@@ -129,9 +133,9 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	for _, varIndex := range features {
 		for _, row := range dataSubset {
 			// create a test split
-			left, right := splitOnIndex(varIndex, row[int(varIndex)], dataSubset)
+			left, right := splitOnIndex(varIndex, row[int(varIndex)], dataSubset, leftLastCols, rightLastCols)
 			// last column is the features
-			gini := calcGiniOnSplit(left, right, lastColumn(dataSubset))
+			gini := calcGiniOnSplit(leftLastCols, rightLastCols, lastColumn(dataSubset))
 			if gini < bestGini { // lowest gini is lowest error in predicting
 				bestVariableIndex = float32(varIndex)
 				bestValueIndex = row[int(varIndex)]
@@ -153,14 +157,26 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 /*
 splitOnIndex splits a dataset based on an attribute and an attribute value
 
+We also extract the last columns for the left and right splits, because they will
+come in handy to speed up the really hot path in `withValue`.
+
 test_split
 */
-func splitOnIndex(index int32, value float32, dataSubset []datarow) (left, right []datarow) {
+func splitOnIndex(index int32, value float32, dataSubset []datarow, leftLastCols []float32, rightLastCols []float32) (left []datarow, right []datarow) {
+	// clear them, but keep garbage collection from cleaning them up,
+	// without this it is actually slower to just get rid of them entirely
+	// just overwrite leftLastCols and rightLastCols values where needed
+	//leftLastCols = leftLastCols[:cap(leftLastCols)]
+	//rightLastCols = rightLastCols[:cap(rightLastCols)]
+
 	for _, row := range dataSubset {
+		// last column has same index as the original row
 		if row[index] < value {
 			left = append(left, row)
+			leftLastCols = append(leftLastCols, row[lastColumnIndex])
 		} else {
 			right = append(right, row)
+			rightLastCols = append(rightLastCols, row[lastColumnIndex])
 		}
 	}
 	return left, right
@@ -174,21 +190,21 @@ of the training sets that were split into left and right. So we look at
 the left and right split, and how well each one predicts the expected
 output values.
 */
-func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32) {
+func calcGiniOnSplit(leftLastCols []float32, rightLastCols []float32, classValues []float32) (gini float32) {
 	// how many of the items in the split predict the class value?
 	for _, classVariableIndex := range classValues {
 		var size float32
 		var proportion float32
 		// left
-		if len(left) != 0 {
-			size = float32(len(left))
-			proportion = withValue(lastColumnIndex, classVariableIndex, left) / size
+		if len(leftLastCols) != 0 {
+			size = float32(len(leftLastCols))
+			proportion = withValue(classVariableIndex, leftLastCols) / size
 			gini += proportion * (1 - proportion)
 		}
 		// right is the same code
-		if len(right) != 0 {
-			size = float32(len(right))
-			proportion = withValue(lastColumnIndex, classVariableIndex, right) / size
+		if len(rightLastCols) != 0 {
+			size = float32(len(rightLastCols))
+			proportion = withValue(classVariableIndex, rightLastCols) / size
 			gini += proportion * (1 - proportion)
 		}
 	}
@@ -196,11 +212,12 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 }
 
 // this function takes up about 91 - 98% of cpu burn.
-func withValue(lastColIndex int, value float32, splitGroup []datarow) (count float32) {
-	splitGroupLen := len(splitGroup)
+func withValue(value float32, splitGroupLastColumn []float32) (count float32) {
+	splitGroupLen := len(splitGroupLastColumn)
 	var prediction float32
 	for i := 0; i < splitGroupLen; i++ {
-		prediction = splitGroup[i][lastColIndex]
+		// this next line is really hot
+		prediction = splitGroupLastColumn[i]
 		if prediction == value {
 			count++
 		}
