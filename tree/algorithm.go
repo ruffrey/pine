@@ -236,16 +236,23 @@ func (t *Tree) split(depth int) {
 	// check for a no-split
 	// a perfect split in one direction, so make a terminal out of it.
 	// toTerminal will pick the most frequent variable index
-	if len(t.leftSamples) == 0 || len(t.rightSamples) == 0 {
-		if len(t.leftSamples) > 0 {
-			t.LeftTerminal = toTerminal(t.leftSamples)
-			t.LeftTerminal = toTerminal(t.leftSamples)
-		} else {
-			t.RightTerminal = toTerminal(t.rightSamples)
-			t.RightTerminal = toTerminal(t.rightSamples)
-		}
-		return
-	}
+
+	// NOT clear that this did any good, actually. Seems to prematurely
+	// end the tree when it will normally gain more depth.
+	// i.e. if it is a no-split, isn't that handled below already, on each
+	// terminal?
+
+	//if len(t.leftSamples) == 0 || len(t.rightSamples) == 0 {
+	//	if len(t.leftSamples) > 0 {
+	//		t.LeftTerminal = toTerminal(t.leftSamples)
+	//		t.LeftTerminal = toTerminal(t.leftSamples)
+	//	} else {
+	//		t.RightTerminal = toTerminal(t.rightSamples)
+	//		t.RightTerminal = toTerminal(t.rightSamples)
+	//	}
+	//	return
+	//}
+
 	// check for max depth
 	// too deep - go ahead and do like we did above, let the toTerminal
 	// function choose the most frequent variable index to be the value on
