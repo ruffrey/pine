@@ -163,11 +163,11 @@ come in handy to speed up the really hot path in `withValue`.
 test_split
 */
 func splitOnIndex(index int32, value float32, dataSubset []datarow, leftLastCols []float32, rightLastCols []float32) (left []datarow, right []datarow) {
-	// clear them, but keep garbage collection from cleaning them up,
+	// keep garbage collection from cleaning up leftLastCols and rightLastCols
 	// without this it is actually slower to just get rid of them entirely
 	// just overwrite leftLastCols and rightLastCols values where needed
-	//leftLastCols = leftLastCols[:cap(leftLastCols)]
-	//rightLastCols = rightLastCols[:cap(rightLastCols)]
+	leftLastCols = leftLastCols[:cap(leftLastCols)]
+	rightLastCols = rightLastCols[:cap(rightLastCols)]
 
 	for _, row := range dataSubset {
 		// last column has same index as the original row
