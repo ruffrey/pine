@@ -67,7 +67,8 @@ func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 
 // Originally in the python implementation, the training subset was unused. That
 // seems incorrect. It decreases accuracy to only be working with the 2/3 of the training
-// subset (which was already n_folds-1/n_folds)
+// subset (which was already n_folds-1/n_folds). Decreased accuracy on a single node
+// might be better than high accuracy.
 func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32, allTrees []*Tree) {
 	for i := 0; i < *treesPerFold; i++ {
 		sample := getTrainingCaseSubset(trainSet)
