@@ -34,7 +34,9 @@ var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
 // first len-1 are considered predictors, last one is the letter index to be predicted
 var trainingCases []datarow
-var maxDepth = 10
+
+// maxDepth is the maximum depth of child nodes allowed from the root of a tree
+var maxDepth = 8
 var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
