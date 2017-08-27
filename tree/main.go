@@ -15,10 +15,7 @@ import (
 
 	"path/filepath"
 
-	"log"
-
 	"github.com/pkg/profile"
-	"github.com/xfong/go2opencl/cl"
 )
 
 /*
@@ -53,9 +50,6 @@ var modelFile *string
 var saveTo *string
 var seedText *string
 var prof *string
-var deviceIndex *int
-
-var processor *cl.Device
 
 /* setColumnGlobals(int) MUST be called as soon as possible */
 
@@ -74,22 +68,7 @@ func main() {
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 
 	tojson := flag.Bool("tojson", false, "Convert a model to json")
-
-	listDevices := flag.Bool("devices", false, "List OpenCL processing devices")
-	deviceIndex = flag.Int("dev", 0, "Index of device from -devices to use")
 	flag.Parse()
-
-	if *listDevices {
-		devices := getDevices()
-		for i, device := range devices {
-			fmt.Println("\n", i, " - ", device.Name())
-			fmt.Println(" ", device.Version())
-			fmt.Println("  Clock:", device.MaxClockFrequency())
-			fmt.Println("  Compute Units:", device.MaxComputeUnits())
-			fmt.Println("  Available:", device.Available())
-		}
-		return
-	}
 
 	if *prof == "mem" {
 		defer profile.Start(profile.MemProfile).Stop()
@@ -140,22 +119,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func getDevices() (devices []*cl.Device) {
-	platforms, err := cl.GetPlatforms()
-	if err != nil {
-		log.Fatal("failed getting OpenCL platforms", err)
-	}
-	platform := platforms[0]
-	devices, err = platform.GetDevices(cl.DeviceTypeAll)
-	if err != nil {
-		log.Fatal("failed getting OpenCL devices", err)
-	}
-	return devices
-}
 func train() {
-	devices := getDevices()
-	processor = devices[*deviceIndex] // global
-
 	rand.Seed(time.Now().Unix())
 	fmt.Println("Reading data file", *dataFile)
 	buf, err := ioutil.ReadFile(*dataFile)

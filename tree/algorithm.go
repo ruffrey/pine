@@ -194,6 +194,20 @@ func calcGiniOnSplit(left, right []datarow, classValues []float32) (gini float32
 	return gini
 }
 
+// this function takes up about 91 - 98% of cpu burn.
+func withValue(lastColIndex int, value float32, splitGroup []datarow) (count float32) {
+	splitGroupLen := len(splitGroup)
+	var prediction float32
+	for i := 0; i < splitGroupLen; i++ {
+		prediction = splitGroup[i][lastColIndex]
+		if prediction == value {
+			count++
+		}
+	}
+
+	return count
+}
+
 /*
 split creates child splits for a t or makes terminals. This gives
 structure to the new tree created by getSplit()
