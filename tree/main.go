@@ -168,7 +168,7 @@ func train() {
 	var scores []float32
 
 	scores, trees = evaluateAlgorithm()
-	fmt.Println("\nTrees:", *treesPerFold)
+	fmt.Println("\nTrees per fold:", *treesPerFold)
 	fmt.Println("  Fold Scores:", scores)
 	fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
 
