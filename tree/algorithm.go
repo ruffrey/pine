@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 func evaluateAlgorithm() (scores []float32, trees []*Tree) {
@@ -21,8 +22,9 @@ func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 					trainSet = append(trainSet, folds[i]...)
 				}
 			}
-			log.Println("Fold start:", foldIx)
-			predicted, treeSet := randomForest(trainSet, testSet)
+			log.Println("(", foldIx, ") Fold start")
+			predicted, treeSet := randomForest(foldIx, trainSet, testSet)
+			log.Println("(", foldIx, ") Fold done")
 			treeLock.Lock()
 			trees = append(trees, treeSet...)
 			treeLock.Unlock()
@@ -31,7 +33,6 @@ func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 			scoreLock.Lock()
 			scores = append(scores, accuracy)
 			scoreLock.Unlock()
-			log.Println("Fold end:", foldIx)
 			wg.Done()
 		})(fIx, tst)
 	}
@@ -65,18 +66,47 @@ func baggingPredict(trees []*Tree, row datarow) (mostFreqVariable float32) {
 	return mostFreqVariable
 }
 
-// Originally in the python implementation, the training subset was unused. That
-// seems incorrect. It decreases accuracy to only be working with the 2/3 of the training
-// subset (which was already n_folds-1/n_folds). Decreased accuracy on a single node
-// might be better than high accuracy.
-func randomForest(trainSet []datarow, testSet []datarow) (predictions []float32, allTrees []*Tree) {
-	for i := 0; i < *treesPerFold; i++ {
+func treeWorker(jobs <-chan []datarow, results chan<- *Tree) {
+	for trainSet := range jobs {
 		sample := getTrainingCaseSubset(trainSet)
 		tree := getSplit(sample)
 		tree.split(1)
-		allTrees = append(allTrees, tree)
-		log.Println("split tree", i, "/", *treesPerFold)
+		results <- tree
 	}
+}
+
+// Originally in the python implementation, the training subset was unused. That
+// seems incorrect. It decreases accuracy to only be working with the 2/3 of the training
+// subset (which was already n_folds-1/n_folds). Decreased accuracy on a single node
+// might be better than high accuracy per node, because the nodes should be dissimilar
+// but together they vote for the best answer.
+func randomForest(foldIndex int, trainSet []datarow, testSet []datarow) (predictions []float32, allTrees []*Tree) {
+	jobs := make(chan []datarow, parallelTrees)
+	results := make(chan *Tree, *treesPerFold)
+
+	// spawn worker pool
+	for i := 0; i < parallelTrees; i++ {
+		go treeWorker(jobs, results)
+	}
+	// send all jobs into the pool
+	for i := 0; i < *treesPerFold; i++ {
+		jobs <- trainSet
+	}
+	close(jobs) // disallow any more jobs to enter
+
+	var lenAll int
+	for tree := range results {
+		allTrees = append(allTrees, tree)
+		lenAll = len(allTrees)
+		log.Println("(", foldIndex, ") Tree done", lenAll, "/", *treesPerFold)
+		if lenAll >= *treesPerFold {
+			close(results)
+			break
+		}
+	}
+
+	// worker pool done
+
 	for _, row := range testSet {
 		pred := baggingPredict(allTrees, row)
 		predictions = append(predictions, pred)
@@ -105,6 +135,9 @@ func sum(scores []float32) (s float32) {
 	return s
 }
 
+var _logEvery int64 = 2000
+var _sec = int64(time.Second)
+
 // getSplit selects the best split point for a dataset, for a few features only,
 // so this tree cares about only some features, not all of them.
 func getSplit(dataSubset []datarow) (t *Tree) {
@@ -114,10 +147,11 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	var bestRight []datarow
 	var bestGini float32 = 9999
 
-	// prevent many malloc events
+	// prevent many malloc events by reusing these
 	var leftLastCols []float32
 	var rightLastCols []float32
 
+	// choose the features
 	var features []int32 // index of
 	for len(features) < n_features {
 		// the following line is quite slow
@@ -130,6 +164,13 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	// The goal is split the subsets of data on random Variables,
 	// and see which one best predicts the row of data. That gets turned into a
 	// new tree
+	var index int64 = 0
+	var n int64
+	var perSplit int64
+	var remaining int64
+	lastLog := time.Now().UnixNano()
+	totalIterations := int64(len(features) * len(dataSubset))
+
 	for _, varIndex := range features {
 		for _, row := range dataSubset {
 			// create a test split
@@ -142,6 +183,15 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 				bestGini = gini
 				bestLeft = left
 				bestRight = right
+			}
+			index++
+			if index%_logEvery == 0 {
+				n = time.Now().UnixNano()
+				perSplit = (n - lastLog) / _logEvery
+				remaining = totalIterations - index
+				log.Println(perSplit, "ns per row split", (remaining*perSplit)/_sec,
+					"secs left in split")
+				lastLog = n
 			}
 		}
 	}

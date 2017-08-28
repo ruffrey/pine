@@ -15,6 +15,8 @@ import (
 
 	"path/filepath"
 
+	"runtime"
+
 	"github.com/pkg/profile"
 )
 
@@ -52,6 +54,7 @@ var modelFile *string
 var saveTo *string
 var seedText *string
 var prof *string
+var parallelTrees int = 1 // how many trees to build at once (per fold)
 
 /* setColumnGlobals(int) MUST be called as soon as possible */
 
@@ -122,7 +125,9 @@ func usage() {
 }
 
 func train() {
+	// seed the random number generator
 	rand.Seed(time.Now().Unix())
+
 	fmt.Println("Reading data file", *dataFile)
 	buf, err := ioutil.ReadFile(*dataFile)
 	if err != nil {
@@ -131,6 +136,7 @@ func train() {
 	trainingData = string(buf)
 	variables = make(map[string]float32)
 
+	// setup variables from the data
 	if *charMode {
 		fmt.Println("Running in character mode - one hot encoding")
 		allChars := strings.Split(trainingData, "")
@@ -165,22 +171,43 @@ func train() {
 	fmt.Println("feature split size (m):", n_features)
 	fmt.Println("training cases:", len(trainingCases))
 
+	parallelTrees = int(math.Max(2, float64(runtime.NumCPU())/float64(*n_folds)))
+	fmt.Println("concurrent trees:", parallelTrees)
+
 	// run the training testing various numbers of Trees to see how many we need
 	var trees []*Tree
 	var scores []float32
+	saveNow := func() {
+		s := &saveFormat{
+			Trees:            trees,
+			IndexedVariables: indexedVariables,
+			Variables:        variables,
+		}
+		save(*saveTo, s)
+		fmt.Println("\nSaved", len(trees), "trees and", len(indexedVariables), "variables to", *saveTo)
+	}
+	//var t *time.Ticker
+	//go (func() {
+	//	t = time.NewTicker(15 * time.Minute)
+	//	for {
+	//		select {
+	//		case <-t.C:
+	//			saveNow()
+	//		}
+	//	}
+	//})()
 
+	// this is the thing that begins running
 	scores, trees = evaluateAlgorithm()
+
+	//t.Stop() // prevent saving conflict top the save below
+
+	fmt.Println("\nComplete.")
 	fmt.Println("\nTrees per fold:", *treesPerFold)
 	fmt.Println("  Fold Scores:", scores)
 	fmt.Println("  Mean Accuracy:", sum(scores)/float32(len(scores)), "%")
 
-	s := &saveFormat{
-		Trees:            trees,
-		IndexedVariables: indexedVariables,
-		Variables:        variables,
-	}
-	save(*saveTo, s)
-	fmt.Println("\nSaved", len(trees), "trees and", len(indexedVariables), "variables to", *saveTo)
+	saveNow()
 }
 
 func setColumnGlobals(lenFirstRow int) {
