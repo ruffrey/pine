@@ -153,7 +153,7 @@ func train() {
 				variables[c] = float32(newIndex)
 			}
 		}
-		sequenceLength = len(variables)
+		sequenceLength = len(variables) * 2
 		fmt.Println("sequence length=", sequenceLength)
 		trainingCases = encodeLettersToCases(allChars, false)
 	} else { // NOT character prediction mode
