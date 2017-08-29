@@ -168,8 +168,8 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	var perSplit int64
 	var remaining int64
 	lastLog := time.Now().UnixNano()
-	totalIterations := int64(len(features) * len(dataSubset))
-
+	totalIterations := int64(n_features * len(dataSubset))
+	log.Println("totalIterations:", n_features, "*", len(dataSubset), "=", totalIterations)
 	for _, varIndex := range features {
 		for _, row := range dataSubset {
 			// create a test split
@@ -188,7 +188,7 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 				n = time.Now().UnixNano()
 				perSplit = (n - lastLog) / _logEvery
 				remaining = totalIterations - index
-				log.Println(perSplit, "ns per row split", (remaining*perSplit)/_sec,
+				log.Println(perSplit, "ns per row", (remaining*perSplit)/_sec,
 					"secs left in split")
 				lastLog = n
 			}
@@ -237,8 +237,8 @@ func withValue(value float32, splitGroupLastColumn []float32) (count float32) {
 	splitGroupLen := len(splitGroupLastColumn)
 	var prediction float32
 	for i := 0; i < splitGroupLen; i++ {
-		// this next line is really hot
 		prediction = splitGroupLastColumn[i]
+		// this next line is really hot
 		if prediction == value {
 			count++
 		}

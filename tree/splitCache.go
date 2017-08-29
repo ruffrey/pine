@@ -25,8 +25,6 @@ func (sc *splitCache) splitOnIndex(index int32, value float32, dataSubset []data
 	// keep garbage collection from cleaning up leftLastCols and rightLastCols
 	// without this it is actually slower to just get rid of them entirely
 	// just overwrite leftLastCols and rightLastCols values where needed
-	//leftLastCols = leftLastCols[:cap(leftLastCols)]
-	//rightLastCols = rightLastCols[:cap(rightLastCols)]
 	sc.left = sc.left[:0]
 	sc.right = sc.right[:0]
 	sc.leftLastCols = sc.leftLastCols[:0]
