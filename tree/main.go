@@ -43,8 +43,8 @@ var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
-var lastColumnIndex int     // columnsPerRow minus 1
-var sequenceLength int = 10 // for character mode
+var lastColumnIndex int // columnsPerRow minus 1
+var sequenceLength int  // for character mode
 // in the dataset (minus 1 fold for cross-validation), how many samples
 // should be taken from the dataset (with replacement) to train each tree?
 // as a percent of dataset
@@ -153,7 +153,7 @@ func train() {
 				variables[c] = float32(newIndex)
 			}
 		}
-		sequenceLength = len(variables) / 2
+		sequenceLength = len(variables)
 		fmt.Println("sequence length=", sequenceLength)
 		trainingCases = encodeLettersToCases(allChars, false)
 	} else { // NOT character prediction mode
@@ -290,10 +290,16 @@ func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow
 		nextCase := make(datarow, columnsPerRow) // zero is default
 
 		// many-hot encoding
-		for i := letterIndex - sequenceLength; i < letterIndex; i++ {
-			letter = allChars[i]
-			indexDistance = letterIndex - i
-			sequenceWeight = 1 + (1-float32(indexDistance))/float32(sequenceLength)
+		// each variable gets a different value, such that the most recent
+		// in the sequence gets the highest possible value, and the
+		// least recent in the sequence gets the lowest value
+
+		sequence := allChars[letterIndex-sequenceLength : letterIndex]
+
+		// start i, the index of allChars, at the least recent sequence
+		for i := 0; i < sequenceLength; i++ {
+			letter = sequence[i]
+			sequenceWeight = float32(i+1) / float32(sequenceLength)
 			if sequenceWeight > 1 || sequenceWeight <= 0 {
 				fmt.Println("i=", i, "letter=", letter, "indexDistance=", indexDistance, "sequenceWeight=", sequenceWeight)
 				panic("sequence weight should be between 0 and 1.0")

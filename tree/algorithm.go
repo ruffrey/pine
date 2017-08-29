@@ -176,7 +176,7 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 			sc.splitOnIndex(varIndex, row[int(varIndex)], dataSubset)
 			// last column is the features
 			gini := calcGiniOnSplit(sc.leftLastCols, sc.rightLastCols, lastColumn(dataSubset))
-			if gini < bestGini { // lowest gini is lowest error in predicting
+			if gini <= bestGini { // lowest gini is lowest error in predicting
 				bestVariableIndex = float32(varIndex)
 				bestValueIndex = row[int(varIndex)]
 				bestGini = gini
