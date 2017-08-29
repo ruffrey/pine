@@ -147,9 +147,8 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	var bestRight []datarow
 	var bestGini float32 = 9999
 
-	// prevent many malloc events by reusing these
-	var leftLastCols []float32
-	var rightLastCols []float32
+	// prevent many malloc and gc events by reusing these
+	sc := splitCache{}
 
 	// choose the features
 	var features []int32 // index of
@@ -174,15 +173,15 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 	for _, varIndex := range features {
 		for _, row := range dataSubset {
 			// create a test split
-			left, right := splitOnIndex(varIndex, row[int(varIndex)], dataSubset, leftLastCols, rightLastCols)
+			sc.splitOnIndex(varIndex, row[int(varIndex)], dataSubset)
 			// last column is the features
-			gini := calcGiniOnSplit(leftLastCols, rightLastCols, lastColumn(dataSubset))
+			gini := calcGiniOnSplit(sc.leftLastCols, sc.rightLastCols, lastColumn(dataSubset))
 			if gini < bestGini { // lowest gini is lowest error in predicting
 				bestVariableIndex = float32(varIndex)
 				bestValueIndex = row[int(varIndex)]
 				bestGini = gini
-				bestLeft = left
-				bestRight = right
+				bestLeft = sc.left
+				bestRight = sc.right
 			}
 			index++
 			if index%_logEvery == 0 {
@@ -202,34 +201,6 @@ func getSplit(dataSubset []datarow) (t *Tree) {
 		rightSamples:  bestRight,
 	}
 	return t
-}
-
-/*
-splitOnIndex splits a dataset based on an attribute and an attribute value
-
-We also extract the last columns for the left and right splits, because they will
-come in handy to speed up the really hot path in `withValue`.
-
-test_split
-*/
-func splitOnIndex(index int32, value float32, dataSubset []datarow, leftLastCols []float32, rightLastCols []float32) (left []datarow, right []datarow) {
-	// keep garbage collection from cleaning up leftLastCols and rightLastCols
-	// without this it is actually slower to just get rid of them entirely
-	// just overwrite leftLastCols and rightLastCols values where needed
-	leftLastCols = leftLastCols[:cap(leftLastCols)]
-	rightLastCols = rightLastCols[:cap(rightLastCols)]
-
-	for _, row := range dataSubset {
-		// last column has same index as the original row
-		if row[index] < value {
-			left = append(left, row)
-			leftLastCols = append(leftLastCols, row[lastColumnIndex])
-		} else {
-			right = append(right, row)
-			rightLastCols = append(rightLastCols, row[lastColumnIndex])
-		}
-	}
-	return left, right
 }
 
 /*
