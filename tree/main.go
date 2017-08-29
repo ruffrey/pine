@@ -45,6 +45,10 @@ var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
 var lastColumnIndex int     // columnsPerRow minus 1
 var sequenceLength int = 10 // for character mode
+// in the dataset (minus 1 fold for cross-validation), how many samples
+// should be taken from the dataset (with replacement) to train each tree?
+// as a percent of dataset
+var subsetSizePercent = 0.5
 
 var charMode *bool
 
