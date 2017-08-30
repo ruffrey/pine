@@ -50,6 +50,12 @@ var sequenceLength int  // for character mode
 // as a percent of dataset
 var subsetSizePercent = 0.5
 
+// skipSize is how many letters to skip during character mode when making
+// test cases. A size of 1 means each and every inputted character will
+// have a prediction case. skipSize of 3 means every 3rd will be predicted,
+// and there will be 1/3 as many test cases.
+var skipSize = 3
+
 var charMode *bool
 
 // flags
@@ -286,7 +292,7 @@ func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow
 		}
 	}
 
-	for letterIndex := sequenceLength; letterIndex < len(allChars); letterIndex++ {
+	for letterIndex := sequenceLength; letterIndex < len(allChars); letterIndex += skipSize {
 
 		nextCase := make(datarow, columnsPerRow) // zero is default
 
