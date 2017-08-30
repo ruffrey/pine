@@ -44,7 +44,8 @@ func evaluateAlgorithm() (scores []float32, trees []*Tree) {
 // predict takes a list of variable indexes (an input row) and predicts a single
 // variable index as the output.
 func (t *Tree) predict(row datarow) (prediction float32) {
-	if row[int(t.VariableIndex)] < t.ValueIndex {
+	inputVariableValue := row[int(t.VariableIndex)]
+	if inputVariableValue < t.ValueIndex {
 		if t.LeftNode != nil {
 			return t.LeftNode.predict(row)
 		}
