@@ -229,6 +229,7 @@ func predict() {
 	fmt.Println(len(loaded.Trees), "Trees loaded")
 
 	variables = loaded.Variables
+	sequenceLength = len(variables) * 2
 	indexedVariables = loaded.IndexedVariables
 
 	var inputRows []datarow
