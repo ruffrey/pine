@@ -35,7 +35,7 @@ func maxCount(list []float32) (highestFreqIndex float32) {
 // getTrainingCaseSubset samples `subsetSizePercent` of the data, with replacement
 func getTrainingCaseSubset(data []datarow) (subset []datarow) {
 	dataLen := len(data)
-	subsetSizeSamples := int(subsetSizePercent * float64(dataLen))
+	subsetSizeSamples := int((*subsetSizePercent) * float64(dataLen))
 	for i := 0; i < subsetSizeSamples; i++ {
 		subset = append(subset, data[rand.Intn(dataLen)])
 	}

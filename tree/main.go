@@ -48,7 +48,7 @@ var sequenceLength int  // for character mode
 // in the dataset (minus 1 fold for cross-validation), how many samples
 // should be taken from the dataset (with replacement) to train each tree?
 // as a percent of dataset
-var subsetSizePercent = 0.5
+var subsetSizePercent *float64
 
 // skipSize is how many letters to skip during character mode when making
 // test cases. A size of 1 means each and every inputted character will
@@ -80,6 +80,7 @@ func main() {
 	seedText = flag.String("seed", "", "Predict based on this string of data")
 	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
 	skipSize = flag.Int("skipsize", 3, "During -charmode, how many letters to skip before making another training case")
+	subsetSizePercent = flag.Float64("subsetpct", 0.6, "Percent of the dataset which should be used to train a tree (always minus 1 fold for cross-validation)")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 
