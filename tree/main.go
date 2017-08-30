@@ -147,18 +147,33 @@ func train() {
 	variables = make(map[string]float32)
 
 	// setup variables from the data
+	// we will get them, then shuffle the letters
 	if *charMode {
 		fmt.Println("Running in character mode - one hot encoding")
 		allChars := strings.Split(trainingData, "")
 		var c string
+		// first find the unique letters
+		var tempAllVars []string
 		for i := 0; i < len(allChars); i++ {
 			c = allChars[i]
 			if _, existsYet := variables[c]; !existsYet {
-				indexedVariables = append(indexedVariables, c)
-				newIndex := len(indexedVariables) - 1
-				variables[c] = float32(newIndex)
+				tempAllVars = append(tempAllVars, c) // it's in order here, but we will shuffle
+				variables[c] = -1                    // track whether we have seen it before
 			}
 		}
+		// now shuffle them - otherwise the left side will be artificially
+		// favored because the more common letters favor the beginning of the array
+		perm := rand.Perm(len(variables))
+		for _, randIndex := range perm {
+			// get a random letter
+			c = tempAllVars[randIndex]
+			// add the random letter into a tracked but now randomly ordered list
+			indexedVariables = append(indexedVariables, c)
+			// use that index to put it in the map of variables
+			newIndex := len(indexedVariables) - 1
+			variables[c] = float32(newIndex)
+		}
+
 		sequenceLength = len(variables) * 2
 		fmt.Println("sequence length=", sequenceLength)
 		trainingCases = encodeLettersToCases(allChars, false)
