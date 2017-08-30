@@ -54,7 +54,7 @@ var subsetSizePercent = 0.5
 // test cases. A size of 1 means each and every inputted character will
 // have a prediction case. skipSize of 3 means every 3rd will be predicted,
 // and there will be 1/3 as many test cases.
-var skipSize = 3
+var skipSize *int
 
 var charMode *bool
 
@@ -79,6 +79,7 @@ func main() {
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
 	seedText = flag.String("seed", "", "Predict based on this string of data")
 	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
+	skipSize = flag.Int("skipsize", 3, "During -charmode, how many letters to skip before making another training case")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 
@@ -98,6 +99,10 @@ func main() {
 		}
 		if *saveTo == "" {
 			fmt.Println("-save flag is required and should be a path for saving the model")
+			return
+		}
+		if *skipSize < 1 {
+			fmt.Println("-skipsize must be greater than 0")
 			return
 		}
 		train()
@@ -174,9 +179,9 @@ func train() {
 			variables[c] = float32(newIndex)
 		}
 
-		sequenceLength = len(variables) * 2
+		sequenceLength = len(variables)
 		fmt.Println("sequence length=", sequenceLength)
-		trainingCases = encodeLettersToCases(allChars, false)
+		trainingCases = encodeLettersToCases(allChars)
 	} else { // NOT character prediction mode
 		rows := strings.Split(trainingData, "\n")
 		col1 := strings.Split(rows[0], ",")
@@ -192,12 +197,13 @@ func train() {
 
 	fmt.Println("features:", lastColumnIndex)
 	fmt.Println("data folds:", *n_folds)
+	fmt.Println("trees per fold:", *treesPerFold)
 	fmt.Println("prediction categories:", variables)
 	fmt.Println("feature split size (m):", n_features)
 	fmt.Println("training cases:", len(trainingCases))
 
-	parallelTrees = int(math.Max(2, float64(runtime.NumCPU())/float64(*n_folds)))
-	fmt.Println("concurrent trees:", parallelTrees)
+	parallelTrees = int(math.Ceil(math.Max(2, float64(runtime.NumCPU())/float64(*n_folds))))
+	fmt.Println("concurrent trees:", parallelTrees, "*", *n_folds, "=", parallelTrees*(*n_folds))
 
 	// run the training testing various numbers of Trees to see how many we need
 	var trees []*Tree
@@ -250,26 +256,52 @@ func predict() {
 	fmt.Println(len(loaded.Trees), "Trees loaded")
 
 	variables = loaded.Variables
-	sequenceLength = len(variables) * 2
+	sequenceLength = len(variables)
 	indexedVariables = loaded.IndexedVariables
 
 	var inputRows []datarow
 
 	if *charMode {
+		skipOne := 1
+		skipSize = &skipOne // force this, to use all letters
 		seedChars := strings.Split(*seedText, "")
-		inputRows = encodeLettersToCases(seedChars, true)
-	} else {
-		// need to set this global first
-		inputRow := strings.Split(*seedText, ",")
-		setColumnGlobals(len(inputRow))
+		if sequenceLength > len(seedChars) {
+			sequenceLength = len(seedChars)
+		}
+		inputRows = encodeLettersToCases(seedChars)
 
-		inputRows = []datarow{parseRow(*seedText, 0)}
+		var mostFreqVar float32
+		var lastPrediction string
+		for _, irow := range inputRows {
+			mostFreqVar = baggingPredict(loaded.Trees, irow)
+			lastPrediction = indexedVariables[int(mostFreqVar)]
+			fmt.Print(lastPrediction)
+		}
+
+		// now feed it back onto itself until stopping
+		var irow datarow
+		for {
+			// make a row with only the last prediction in it
+			irow = encodeLettersToCases([]string{lastPrediction})[0]
+			mostFreqVar = baggingPredict(loaded.Trees, irow)
+			lastPrediction = indexedVariables[int(mostFreqVar)]
+			fmt.Print(lastPrediction)
+		}
+		// unreachable return
 	}
 
+	// not character mode
+
+	// need to set this global first
+	inputRow := strings.Split(*seedText, ",")
+	setColumnGlobals(len(inputRow))
+
+	inputRows = []datarow{parseRow(*seedText, 0)}
 	for _, irow := range inputRows {
 		mostFreqVar := baggingPredict(loaded.Trees, irow)
 		fmt.Print(indexedVariables[int(mostFreqVar)])
 	}
+
 	fmt.Println()
 }
 
@@ -287,39 +319,27 @@ will get an equally increased amount in the training case. So in essence:
 
 The predicted letter is the last column.
 */
-func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow) {
+func encodeLettersToCases(allChars []string) (cases []datarow) {
 	setColumnGlobals(len(indexedVariables) + 1)
 	var letter string
 	var sequenceWeight float32
 	var indexDistance int
-
-	// for predictions shorter than sequence length
-	if isPrediction {
-		// fill in whatever is missing in a full sequence with randomness
-		var rem int
-		if len(allChars) < sequenceLength {
-			rem = sequenceLength - len(allChars)
-		} else {
-			rem = len(allChars) % sequenceLength
-		}
-		for i := 0; i < rem+1; i++ {
-			allChars = append(allChars, indexedVariables[rand.Intn(len(variables))])
-		}
-	}
-
-	for letterIndex := sequenceLength; letterIndex < len(allChars); letterIndex += skipSize {
-
+	// if there are less characters, at least
+	ranOnce := false
+	var nextEnd int // next end of the current sequence
+	for letterIndex := sequenceLength; !ranOnce || letterIndex < len(allChars); letterIndex += *skipSize {
+		ranOnce = true
 		nextCase := make(datarow, columnsPerRow) // zero is default
 
 		// many-hot encoding
 		// each variable gets a different value, such that the most recent
 		// in the sequence gets the highest possible value, and the
 		// least recent in the sequence gets the lowest value
-
-		sequence := allChars[letterIndex-sequenceLength : letterIndex]
+		nextEnd = int(math.Min(float64(len(allChars)), float64(letterIndex)))
+		sequence := allChars[letterIndex-sequenceLength : nextEnd]
 
 		// start i, the index of allChars, at the least recent sequence
-		for i := 0; i < sequenceLength; i++ {
+		for i := 0; i < sequenceLength-1; i++ {
 			letter = sequence[i]
 			sequenceWeight = float32(i+1) / float32(sequenceLength)
 			if sequenceWeight > 1 || sequenceWeight <= 0 {
@@ -329,8 +349,10 @@ func encodeLettersToCases(allChars []string, isPrediction bool) (cases []datarow
 			nextCase[int(variables[letter])] = sequenceWeight
 		}
 
-		letter = allChars[letterIndex]
-		nextCase[lastColumnIndex] = variables[letter] // the variable index being predicted
+		if letterIndex < len(allChars)-1 { // should always be true except during prediction
+			letter = allChars[letterIndex]
+			nextCase[lastColumnIndex] = variables[letter] // the variable index being predicted
+		}
 		cases = append(cases, nextCase)
 		//fmt.Println(nextCase)
 	}
