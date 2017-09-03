@@ -329,7 +329,7 @@ func predict() {
 }
 
 func getCharmodeInputText(s string) (cases []string) {
-	r := strings.Replace(s, "\n", "", -1)
+	r := strings.Replace(s, "\n", " ", -1)
 	cases = strings.Split(r, charmodeSplitChar)
 	return cases
 }
