@@ -59,6 +59,8 @@ var modelFile *string
 var saveTo *string
 var seedText *string
 var prof *string
+var overrideFeatureSplitSize *int // override n_features
+var overrideSequenceLength *int   // override sequenceLength
 
 // in the dataset (minus 1 fold for cross-validation), how many samples
 // should be taken from the dataset (with replacement) to train each tree?
@@ -85,9 +87,12 @@ func main() {
 	pred := flag.Bool("pred", false, "Make a prediction")
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
 	seedText = flag.String("seed", "", "Predict based on this string of data")
-	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
+	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode. This will create test cases by iterating through the data `skipSize` at a time, and making the previous `sequenceLength` items have higher weights based on the closeness to the current item being predicted.s")
 	skipSize = flag.Int("skipsize", 3, "During -charmode, how many items to skip before making another training case")
 	subsetSizePercent = flag.Float64("subsetpct", 0.6, "Percent of the dataset which should be used to train a tree (always minus 1 fold for cross-validation)")
+
+	overrideFeatureSplitSize = flag.Int("m", 0, "Override calculation for feature split size (little m)")
+	overrideSequenceLength = flag.Int("seqlen", 0, "Normally equal to the number of variables during -charmode, override for fewer previous look-behind-memory-variables in every input test cases")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 
@@ -187,7 +192,10 @@ func train() {
 			variables[c] = float32(newIndex)
 		}
 
-		sequenceLength = len(variables)
+		sequenceLength = *overrideSequenceLength
+		if sequenceLength == 0 {
+			sequenceLength = len(variables)
+		}
 		fmt.Println("sequence length=", sequenceLength)
 		trainingCases = encodeLettersToCases(allChars)
 	} else { // NOT character prediction mode
@@ -201,7 +209,13 @@ func train() {
 	}
 
 	// there are columnsPerRow items per data row
-	n_features = int(math.Sqrt(float64(columnsPerRow)))
+
+	n_features = *overrideFeatureSplitSize
+	if n_features == 0 {
+		// most likely we will want to use this, but during word mode we may limit
+		// the feature size
+		n_features = int(math.Sqrt(float64(columnsPerRow)))
+	}
 
 	fmt.Println("features:", lastColumnIndex)
 	fmt.Println("data folds:", *n_folds)
@@ -271,7 +285,7 @@ func predict() {
 
 	if *charMode {
 		skipOne := 1
-		skipSize = &skipOne // force this, to use all letters
+		skipSize = &skipOne // force this, to use all items
 
 		seedChars := getInputText(*seedText)
 		if sequenceLength > len(seedChars) {
