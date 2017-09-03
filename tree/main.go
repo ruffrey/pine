@@ -220,7 +220,7 @@ func train() {
 	fmt.Println("features:", lastColumnIndex)
 	fmt.Println("data folds:", *n_folds)
 	fmt.Println("trees per fold:", *treesPerFold)
-	fmt.Println("prediction categories:", variables)
+	fmt.Println("prediction categories:", len(variables))
 	fmt.Println("feature split size (m):", n_features)
 	fmt.Println("training cases:", len(trainingCases))
 
