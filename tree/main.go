@@ -86,7 +86,7 @@ func main() {
 	modelFile = flag.String("model", "", "Load a pretrained model for prediction")
 	seedText = flag.String("seed", "", "Predict based on this string of data")
 	charMode = flag.Bool("charmode", false, "Character prediction mode rather than numeric feature mode")
-	skipSize = flag.Int("skipsize", 3, "During -charmode, how many letters to skip before making another training case")
+	skipSize = flag.Int("skipsize", 3, "During -charmode, how many items to skip before making another training case")
 	subsetSizePercent = flag.Float64("subsetpct", 0.6, "Percent of the dataset which should be used to train a tree (always minus 1 fold for cross-validation)")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
