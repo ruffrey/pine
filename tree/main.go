@@ -31,7 +31,6 @@ to be able to store the last column as an index to the variable string it repres
 */
 
 var trainingData string
-var treesPerFold *int
 var indexedVariables []string    // index to character
 var variables map[string]float32 // character to index
 // first len-1 are considered predictors, last one is the letter index to be predicted
@@ -39,12 +38,28 @@ var trainingCases []datarow
 
 // maxDepth is the maximum depth of child nodes allowed from the root of a tree
 var maxDepth = 8
-var n_folds *int      // how many folds of the dataset for cross-validation
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
 var lastColumnIndex int // columnsPerRow minus 1
 var sequenceLength int  // for character mode
+// how many trees to build at once (per fold)
+var parallelTrees int = 1
+
+// what to spilt on during -charmode. empty string will make very character
+// an input, while splitting on space will use words
+var charmodeSplitChar = " "
+
+/* flags */
+var treesPerFold *int
+var n_folds *int // how many folds of the dataset for cross-validation
+var charMode *bool
+var dataFile *string
+var modelFile *string
+var saveTo *string
+var seedText *string
+var prof *string
+
 // in the dataset (minus 1 fold for cross-validation), how many samples
 // should be taken from the dataset (with replacement) to train each tree?
 // as a percent of dataset
@@ -56,15 +71,7 @@ var subsetSizePercent *float64
 // and there will be 1/3 as many test cases.
 var skipSize *int
 
-var charMode *bool
-
-// flags
-var dataFile *string
-var modelFile *string
-var saveTo *string
-var seedText *string
-var prof *string
-var parallelTrees int = 1 // how many trees to build at once (per fold)
+/* end flags */
 
 /* setColumnGlobals(int) MUST be called as soon as possible */
 
@@ -156,7 +163,7 @@ func train() {
 	// we will get them, then shuffle the letters
 	if *charMode {
 		fmt.Println("Running in character mode - one hot encoding")
-		allChars := strings.Split(trainingData, "")
+		allChars := getInputText(trainingData)
 		var c string
 		// first find the unique letters
 		var tempAllVars []string
@@ -265,7 +272,8 @@ func predict() {
 	if *charMode {
 		skipOne := 1
 		skipSize = &skipOne // force this, to use all letters
-		seedChars := strings.Split(*seedText, "")
+
+		seedChars := getInputText(*seedText)
 		if sequenceLength > len(seedChars) {
 			sequenceLength = len(seedChars)
 		}
@@ -304,6 +312,12 @@ func predict() {
 	}
 
 	fmt.Println()
+}
+
+func getInputText(s string) (cases []string) {
+	r := strings.Replace(s, "\n", "", -1)
+	cases = strings.Split(r, charmodeSplitChar)
+	return cases
 }
 
 /*
