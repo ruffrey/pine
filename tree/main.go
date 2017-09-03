@@ -168,7 +168,7 @@ func train() {
 	// we will get them, then shuffle the letters
 	if *charMode {
 		fmt.Println("Running in character mode - one hot encoding")
-		allChars := getInputText(trainingData)
+		allChars := getCharmodeInputText(trainingData)
 		var c string
 		// first find the unique letters
 		var tempAllVars []string
@@ -287,7 +287,7 @@ func predict() {
 		skipOne := 1
 		skipSize = &skipOne // force this, to use all items
 
-		seedChars := getInputText(*seedText)
+		seedChars := getCharmodeInputText(*seedText)
 		if sequenceLength > len(seedChars) {
 			sequenceLength = len(seedChars)
 		}
@@ -328,7 +328,7 @@ func predict() {
 	fmt.Println()
 }
 
-func getInputText(s string) (cases []string) {
+func getCharmodeInputText(s string) (cases []string) {
 	r := strings.Replace(s, "\n", "", -1)
 	cases = strings.Split(r, charmodeSplitChar)
 	return cases
