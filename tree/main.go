@@ -37,7 +37,7 @@ var variables map[string]float32 // character to index
 var trainingCases []datarow
 
 // maxDepth is the maximum depth of child nodes allowed from the root of a tree
-var maxDepth = 8
+var maxDepth = 10
 var n_features int    // Little `m`, will get rounded down
 var columnsPerRow int // how many total columns in a row. must be the same.
 // how many inputs are fed into the network during a sample; similar to sequence length with neural networks
@@ -61,6 +61,7 @@ var seedText *string
 var prof *string
 var overrideFeatureSplitSize *int // override n_features
 var overrideSequenceLength *int   // override sequenceLength
+var maxPrint *int
 
 // in the dataset (minus 1 fold for cross-validation), how many samples
 // should be taken from the dataset (with replacement) to train each tree?
@@ -93,6 +94,7 @@ func main() {
 
 	overrideFeatureSplitSize = flag.Int("m", 0, "Override calculation for feature split size (little m)")
 	overrideSequenceLength = flag.Int("seqlen", 0, "Normally equal to the number of variables during -charmode, override for fewer previous look-behind-memory-variables in every input test cases")
+	maxPrint = flag.Int("max", 0, "Stop predicting after this many rounds (-pred only)")
 
 	prof = flag.String("profile", "", "[cpu|mem] enable profiling")
 
@@ -286,6 +288,7 @@ func predict() {
 	if *charMode {
 		skipOne := 1
 		skipSize = &skipOne // force this, to use all items
+		totalPrinted := 0
 
 		seedChars := getCharmodeInputText(*seedText)
 		if sequenceLength > len(seedChars) {
@@ -298,7 +301,11 @@ func predict() {
 		for _, irow := range inputRows {
 			mostFreqVar = baggingPredict(loaded.Trees, irow)
 			lastPrediction = indexedVariables[int(mostFreqVar)]
-			fmt.Print(lastPrediction)
+			fmt.Print(lastPrediction, " ")
+			totalPrinted++
+			if *maxPrint > 0 && totalPrinted > *maxPrint {
+				return
+			}
 		}
 
 		// now feed it back onto itself until stopping
@@ -308,7 +315,11 @@ func predict() {
 			irow = encodeLettersToCases([]string{lastPrediction})[0]
 			mostFreqVar = baggingPredict(loaded.Trees, irow)
 			lastPrediction = indexedVariables[int(mostFreqVar)]
-			fmt.Print(lastPrediction)
+			fmt.Print(lastPrediction, " ")
+			totalPrinted++
+			if *maxPrint > 0 && totalPrinted > *maxPrint {
+				return
+			}
 		}
 		// unreachable return
 	}
