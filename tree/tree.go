@@ -19,13 +19,3 @@ type Tree struct {
 	leftSamples  []datarow // temp test cases for left group
 	rightSamples []datarow // temp test cases for right group
 }
-
-//func (t *Tree) String() string {
-//	return fmt.Sprintf("VariableIndex: %f, ValueIndex: %f, LeftNode: %+v, RightNode: %+v, LeftTerminal: %f, RightTerminal: %f",
-//		t.VariableIndex,
-//		t.ValueIndex,
-//		t.LeftNode,
-//		t.RightNode,
-//		t.LeftTerminal,
-//		t.RightTerminal)
-//}

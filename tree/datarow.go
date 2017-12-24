@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
+// datarow is a single row from a CSV file, where each column is a number
 type datarow []float32
 
+// parseRow is a utility which turns the file text from a CSV row into a list of numbers
 func parseRow(row string, rowIndex int) (dr datarow) {
 	cols := strings.Split(row, ",")
 	if len(cols) == 0 { // blank lines ignored
