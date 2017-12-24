@@ -8,8 +8,9 @@ See [this Kaggle discussion](https://www.kaggle.com/general/3920) of the term *r
 
 ## usage
 
-[Go](https://golang.org/dl) is required to build this app. 
+The `tree` executable can be [downloaded on the Releases page](https://github.com/ruffrey/pine/releases).
 
+[Go](https://golang.org/dl) is required to build this app yourself:
 ```bash
 cd pine/tree
 make deps
