@@ -1,6 +1,8 @@
 # Pine - a tool for Random Decision Forests
 
-Ensembles of random decision trees. Make predictions using the machine learning technique.
+Ensembles of random decision trees.
+
+This app implements the machine learning technique of generating groups of random decision trees, where each is responsible for small parts of the dataset.
 
 See [this Kaggle discussion](https://www.kaggle.com/general/3920) of the term *random forest*.
 
@@ -11,7 +13,7 @@ See [this Kaggle discussion](https://www.kaggle.com/general/3920) of the term *r
 ```bash
 cd pine/tree
 make deps
-go build
+go build # outputs the executable "tree" app
 ./tree # prints help
 ```
 
