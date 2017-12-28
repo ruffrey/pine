@@ -4,6 +4,8 @@ Ensembles of random decision trees.
 
 This app implements the machine learning technique of generating groups of random decision trees, where each is responsible for small parts of the dataset.
 
+Training and predictions for **continuous** floating point or integer data are available (categorical-voting not supported).
+
 See [this Kaggle discussion](https://www.kaggle.com/general/3920) of the term *random forest*.
 
 ## usage
